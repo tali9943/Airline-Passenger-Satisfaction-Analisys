@@ -1,0 +1,737 @@
+---
+title: "Airline passenger satisfaction"
+output:
+  html_document:
+    df_print: paged
+---
+  
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+
+Caricamento delle librerie necessarie
+
+```{r, message = FALSE}
+library(MASS)
+library(boot)
+library(caret)
+library(ggplot2)
+library(readr)
+library(dplyr)
+library(glmnet)
+library(effects)
+library(summarytools)
+library(glmnetUtils)
+library(pROC)
+library(car)
+library(corrplot)
+library(GGally)
+
+```
+
+
+
+## Preparation Dataset
+
+```{r}
+data <- read.csv("Dataset/airline_passenger_satisfaction.csv")
+```
+
+
+
+```{r, message = FALSE}
+head(data)
+attach(data)
+dimension_data <- dim(data)
+dimension_data
+
+```
+
+
+
+```{r}
+summary(data)
+print(dfSummary(data), method = 'render')   #'viewer' ,'browser', 'pander' and 'plain'
+```
+
+
+
+
+Remove usefull column of the dataset
+```{r}
+data<- data %>% select(-ID)
+head(data)
+```
+
+Remove observations with missing values
+```{r}
+data <- na.omit(data)
+dimension_data <- dim(data)
+dimension_data
+```
+
+
+Trasformo la satisfaction in 0 e 1
++ 0 = neutral or dissatisfied
++ 1 = satisfied
+
+
+```{r}
+data$Satisfaction <- ifelse(data$Satisfaction %in% c("Neutral or Dissatisfied"),0, ifelse(data$Satisfaction %in% c("Satisfied"),1, data$Satisfaction))
+data$Satisfaction <- as.factor(data$Satisfaction)
+head(data)
+
+```
+
+```{r}
+data <- data %>%
+  mutate_if(is.character, as.factor)
+summary(data)
+print(dfSummary(data), method = 'render')
+```
+
+
+
+
+
+
+Split the dataset into train and test set
+
+```{r}
+partition_data <- function(data, target_var, train_ratio = 0.8, seed = NULL) {
+  if (!is.null(seed)) {
+    set.seed(seed)
+  }
+  
+  nrow <- nrow(data)
+  sample <- sample(c(TRUE, FALSE), nrow, replace = TRUE, prob = c(train_ratio, 1 - train_ratio))
+  
+  train <- data[sample, ]
+  test <- data[!sample, ]
+  
+  trainY <- train[, target_var]
+  testY <- test[, target_var]
+  
+  trainX <- train[, -which(names(train) == target_var)]
+  testX <- test[, -which(names(test) == target_var)]
+  
+  return(list(trainX = trainX, trainY = trainY, testX = testX, testY = testY,train = train, test = test))
+}
+
+```
+
+
+```{r}
+split <- partition_data(data, target_var = "Satisfaction", train_ratio = 0.8, seed = 123)
+
+dim(split$trainX)
+dim(split$testX)
+
+
+train <- split$train
+test <- split$test
+testX <- split$testX
+testy <- split$testY
+```
+
+
+## Analysis of data
+In this section, I analyse the characteristics of the dataset to find the most important features for calculating the satisfaction.
+
+
+Correlation matrix
+```{r}
+
+
+# Trasformazione delle variabili categoriche in variabili dummy
+train_dummy <- model.matrix( ~ . - 1, data=data)
+
+# Calcolo della matrice di correlazione
+cor_matrix <- cor(train_dummy)
+
+
+# Visualizzazione della matrice di correlazione con corrplot
+corrplot(cor_matrix, method="color", type="upper", tl.cex=0.6, tl.col="black")
+
+
+```
+
+
+```{r}
+plot_satisfaction <- function(data) {
+
+  data$Satisfaction <- as.numeric(data$Satisfaction)
+
+  columns_to_plot <- c("Customer.Type", "Type.of.Travel", "Class", "Departure.and.Arrival.Time.Convenience",
+                       "Ease.of.Online.Booking", "Check.in.Service", "Online.Boarding", "On.board.Service",
+                       "Leg.Room.Service", "Cleanliness", "In.flight.Service", "In.flight.Wifi.Service",
+                       "Baggage.Handling")
+  
+  for (col in columns_to_plot) {
+    df_plot <- data %>%
+      group_by(.data[[col]]) %>%
+      summarise(Satisfied = mean(Satisfaction)) %>%
+      mutate(Percentage = Satisfied * 100)
+    
+    p <- ggplot(df_plot, aes_string(x = col, y = "Percentage", fill = "Percentage")) +
+      geom_bar(stat = "identity") +
+      scale_fill_gradient(low = "red", high = "green") +
+      labs(title = paste("Satisfaction vs", col),
+           x = col,
+           y = "Percentage of Satisfied") +
+      theme_minimal() +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1))
+    
+    print(p)
+  }
+}
+
+plot_satisfaction(data)
+
+
+```
+
+
+
+```{r}
+
+plot_satisfaction <- function(data) {
+  
+  data$Type_of_Satisfaction <- factor(data$Satisfaction, levels = c('0', '1'), labels = c("Neutral or Dissatisfied", "Satisfied"))
+  
+  categories <- c("Customer.Type", "Type.of.Travel", "Class", "Departure.and.Arrival.Time.Convenience",
+                  "Ease.of.Online.Booking", "Check.in.Service", "Online.Boarding", "On.board.Service",
+                  "Leg.Room.Service", "Cleanliness", "In.flight.Service", "In.flight.Wifi.Service", 
+                  "Baggage.Handling")
+  
+  for (category in categories) {
+    p <- ggplot(data, aes_string(x = category, fill = "Type_of_Satisfaction")) +
+      geom_bar(position = "dodge") +
+      scale_fill_manual(values = c("Neutral or Dissatisfied" = "red", "Satisfied" = "green")) +
+      labs(title = paste("Satisfaction vs", gsub("\\.", " ", category)),
+           x = gsub("\\.", " ", category),
+           y = "Passengers") +
+      theme_minimal()
+    
+    print(p)
+  }
+  
+  data$Type_of_Satisfaction <- NULL
+}
+
+plot_satisfaction(data)
+```
+
+
+
+# Implementation of models
+
+Cosa voglio fare eccc....
+
+
+## Logistic Regression
+
+```{r}
+model_with_all_predictors <- glm(Satisfaction ~ ., data = train, family = binomial)
+summary(model_with_all_predictors)
+```
+
+
+
+------------------------------------------------------------
+
+## Feature selection 
+Analysing the previously created model, you can see that most of the predictors are useful for calculating ‘Satisfaction’ outside of ‘Flight_Distance’.
+What I am going to do now is to go and do a manual feature selection to see which predictors are the most significant in my model.
+
+To select the best parameters, I go through the results of the previous model and select the predictors with the largest estimate value. At each step I add a few predictors with a smaller estimate value until I reach a satisfactory result.
+
+For each model, I will add new predictors. Then I will run a test set to calculate the AUC area and finally calculate the accuracy.
+
+
+#### 00 model
+```{r}
+o0_model <- glm(Satisfaction ~ Customer.Type + Type.of.Travel, data = train, family = binomial)    
+
+summary(o0_model)
+
+
+```
+
+Below the execution of the test set with the current model:
+```{r}
+o0_model_probs <- predict(o0_model, testX, type = "response")
+
+o0_model_roc <- roc(test$Satisfaction ~ o0_model_probs, plot=TRUE, print.auc=TRUE)
+```
+Returns all information for the classification threshold of 0.5.
+```{r}
+coords(o0_model_roc, x=0.5, ret="all")
+```
+Returns all information for the classification usign the best threshold.
+```{r}
+coords(o0_model_roc, x="best", ret="all")
+```
+
+Check the collinearity between predictors in a regression model. Collinearity occurs when two or more predictors in a model are highly correlated.
+```{r}
+check_collinearity <- vif(o0_model)
+check_collinearity
+```
+
+
+#### 01 model
+```{r}
+o1_model <- glm(Satisfaction ~ Customer.Type + Type.of.Travel + Class + Departure.and.Arrival.Time.Convenience + Ease.of.Online.Booking + Check.in.Service + Online.Boarding + On.board.Service + Leg.Room.Service + Cleanliness + In.flight.Service + In.flight.Wifi.Service + In.flight.Wifi.Service + Baggage.Handling  
+ , data = train, family = binomial)    
+
+summary(o1_model)
+
+```
+
+Below the execution of the test set with the current model:
+```{r}
+o1_model_probs <- predict(o1_model, testX, type = "response")
+
+o1_model_roc <- roc(test$Satisfaction ~ o1_model_probs, plot=TRUE, print.auc=TRUE)
+
+```
+
+Returns all information for the classification threshold of 0.5.
+```{r}
+coords(o1_model_roc, x=0.5, ret="all")
+```
+Returns all information for the classification usign the best threshold.
+```{r}
+coords(o1_model_roc, x="best", ret="all")
+```
+
+Check the collinearity between predictors in a regression model. Collinearity occurs when two or more predictors in a model are highly correlated.
+```{r}
+check_collinearity <- vif(o1_model)
+check_collinearity
+```
+
+
+#### 02 model
+```{r}
+o2_model <- glm(Satisfaction ~ Customer.Type + Type.of.Travel + Class + Departure.and.Arrival.Time.Convenience + Ease.of.Online.Booking + Check.in.Service + Online.Boarding + On.board.Service + Leg.Room.Service + Cleanliness + In.flight.Service + In.flight.Wifi.Service + In.flight.Wifi.Service + Baggage.Handling + Gender + Seat.Comfort + In.flight.Entertainment 
+ , data = train, family = binomial)    
+
+summary(o2_model)
+
+```
+Below the execution of the test set with the current model:
+```{r}
+o2_model_probs <- predict(o2_model, testX, type = "response")
+
+o2_model_roc <- roc(test$Satisfaction ~ o2_model_probs, plot=TRUE, print.auc=TRUE)
+```
+
+Returns all information for the classification threshold of 0.5.
+```{r}
+coords(o2_model_roc, x=0.5, ret="all")
+```
+Returns all information for the classification usign the best threshold.
+```{r}
+coords(o2_model_roc, x="best", ret="all")
+```
+
+Check the collinearity between predictors in a regression model. Collinearity occurs when two or more predictors in a model are highly correlated.
+```{r}
+check_collinearity <- vif(o2_model)
+check_collinearity
+```
+
+
+
+#### 03 model
+```{r}
+o3_model <- glm(Satisfaction ~ Customer.Type + Type.of.Travel + Class + Departure.and.Arrival.Time.Convenience + Ease.of.Online.Booking + Check.in.Service + Online.Boarding + On.board.Service + Leg.Room.Service + Cleanliness + In.flight.Service + In.flight.Wifi.Service + In.flight.Wifi.Service + Baggage.Handling + Gender + Seat.Comfort + In.flight.Entertainment + Departure.Delay + Arrival.Delay + Age
+ , data = train, family = binomial)    
+
+summary(o3_model)
+
+```
+
+Below the execution of the test set with the current model:
+```{r}
+o3_model_probs <- predict(o3_model, testX, type = "response")
+
+o3_model_roc <- roc(test$Satisfaction ~ o3_model_probs, plot=TRUE, print.auc=TRUE)
+```
+Returns all information for the classification threshold of 0.5.
+```{r}
+coords(o3_model_roc, x=0.5, ret="all")
+```
+Returns all information for the classification usign the best threshold.
+```{r}
+coords(o3_model_roc, x="best", ret="all")
+```
+
+Check the collinearity between predictors in a regression model. Collinearity occurs when two or more predictors in a model are highly correlated.
+```{r}
+check_collinearity <- vif(o3_model)
+check_collinearity
+```
+It can be seen that there is a strong collinearity between two predictors: Departure.Delay and Arrival.Delay.
+
+----------------------------------------------------------------------------------------
+
+
+
+
+
+
+## Stepwise Regression models
+
+In this section I am going to implement the stepwise regression model using three different modes: forward, backward and both.
+
+
+
+```{r}
+null_model <- glm(Satisfaction ~ 1, data = train, family = binomial)
+full_model <- glm(Satisfaction ~ ., data = train, family = binomial)
+summary(full_model)
+```
+
+
+### Forward
+
+
+
+```{r}
+stepwise_model_forward <- step(null_model, scope = list(lower = null_model, upper = full_model), direction = "forward")
+summary(stepwise_model_forward)
+```
+AIC is a measure of the relative entropy of a model, i.e. the amount of information lost when using the model to describe the data.
+A lower AIC value indicates a better model.
+During model selection, the AIC values of different models are compared. 
+The model with the lowest AIC is considered the best of those compared.
+
+
+
+Below i run a test using the test set of mine dataset to see the capacity of the model:
+```{r}
+
+stepwise_model_forward_probs <- predict(stepwise_model_forward, testX, type = "response")
+
+stepwise_model_forward_roc <- roc(test$Satisfaction ~ stepwise_model_forward_probs, plot=TRUE, print.auc=TRUE)
+```
+```{r}
+coords(stepwise_model_forward_roc, x=0.5, ret="all")
+```
+And the following considering the best threshold:
+```{r}
+coords(stepwise_model_forward_roc, x="best", ret="all")
+
+```
+
+### Backward
+
+
+```{r}
+stepwise_model_backward <- step(full_model, scope = list(lower = null_model, upper = full_model), direction = "backward")
+summary(stepwise_model_backward)
+
+```
+
+
+```{r}
+stepwise_model_backward_probs <- predict(stepwise_model_backward, testX, type = "response")
+
+stepwise_model_backward_roc <- roc(test$Satisfaction ~ stepwise_model_backward_probs, plot=TRUE, print.auc=TRUE)
+```
+roc function reports the following results with a threshold of 0.5:
+```{r}
+coords(stepwise_model_backward_roc, x=0.5, ret="all")
+```
+And the following considering the best threshold:
+```{r}
+coords(stepwise_model_backward_roc, x="best", ret="all")
+
+```
+
+### Both
+
+
+```{r}
+stepwise_model_both <- step(full_model, scope = list(lower = null_model, upper = full_model), direction = "both")
+summary(stepwise_model_both)
+
+```
+
+```{r}
+stepwise_model_both_probs <- predict(stepwise_model_both, testX, type = "response")
+
+stepwise_model_both_roc <- roc(test$Satisfaction ~ stepwise_model_both_probs, plot=TRUE, print.auc=TRUE)
+```
+
+roc function reports the following results with a threshold of 0.5:
+```{r}
+coords(stepwise_model_backward_roc, x=0.5, ret="all")
+```
+
+And the following considering the best threshold:
+```{r}
+coords(stepwise_model_backward_roc, x="best", ret="all")
+```
+
+## AIC comparison between models
+```{r}
+AIC(new_model)
+AIC(stepwise_model_forward)
+AIC(stepwise_model_backward)
+AIC(stepwise_model_both)
+```
+
+
+
+## Lasso
+
+
+```{r}
+lasso_model<-glmnet(Satisfaction ~ ., data=train,family = "binomial", alpha = 1)
+plot(lasso_model)
+
+```
+
+
+
+```{r}
+set.seed(1)
+cv.out <- cv.glmnet(Satisfaction ~ ., data=train,family = "binomial", alpha = 1, K=5)
+cv.out
+plot(cv.out)
+bestlam.lasso <- cv.out$lambda.min
+lasso.final <- glmnet(Satisfaction ~ .,  data=train , family = "binomial", alpha = 1, lambda = bestlam.lasso)
+```
+
+
+
+```{r}
+plot(lasso_model, xvar = "lambda") 
+abline(v = log(bestlam.lasso), lwd = 1.2, lty = "dashed")
+```
+
+
+The Lasso solution for the selected value of lambda is:
+```{r}
+coef(lasso_model, bestlam.lasso)
+```
+
+
+
+
+```{r}
+lasso_model_probs <- predict(lasso_model, s = bestlam.lasso, newdata=test, type="response")
+lasso_model_roc <- roc(test$Satisfaction ~ lasso_model_probs, plot=TRUE, print.auc=TRUE)
+```
+
+
+Roc function reports the following results with a threshold of 0.5:
+```{r}
+coords(lasso_model_roc, x=0.5, ret="all")
+```
+And the following considering the best threshold:
+```{r}
+coords(lasso_model_roc, x="best", ret="all")
+
+```
+We can also try to fit a logistic regression model choosing the predictors suggested by Lasso.
+
+```{r}
+lasso_log <- glm(Satisfaction ~ Age +Customer.Type + Type.of.Travel + Class + Flight.Distance + Departure.Delay + Arrival.Delay
++ Departure.and.Arrival.Time.Convenience + Ease.of.Online.Booking + Check.in.Service + Online.Boarding + Gate.Location + On.board.Service + Seat.Comfort + Leg.Room.Service + Cleanliness +
+ Food.and.Drink + In.flight.Service + In.flight.Wifi.Service + In.flight.Entertainment + Baggage.Handling  , data = train, family = binomial)
+summary(lasso_log)
+```
+
+
+
+
+
+
+```{r}
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## Ridge Regression
+
+
+```{r}
+ridge_model<-glmnet(Satisfaction ~ ., data=train, family = "binomial", alpha = 0)
+plot(ridge_model)
+```
+
+
+
+
+
+```{r}
+set.seed(1)
+cv.out <- cv.glmnet(Satisfaction ~ ., data=train,family = "binomial", alpha = 0, K=5)
+cv.out
+plot(cv.out)
+bestlam_ridge <- cv.out$lambda.min
+ridge_final <- glmnet(Satisfaction ~ .,  data=train , family = "binomial", alpha = 0, lambda = bestlam_ridge)
+```
+
+```{r}
+plot(ridge_model, xvar = "lambda") 
+abline(v = log(bestlam_ridge), lwd = 1.2, lty = "dashed")
+```
+
+
+The Lasso solution for the selected value of lambda is:
+```{r}
+coef(ridge_model, bestlam_ridge)
+```
+
+
+```{r}
+ridge_model_probs <- predict(ridge_model, s = bestlam_ridge, newdata=test, type="response")
+ridge_model_roc <- roc(test$Satisfaction ~ ridge_model_probs, plot=TRUE, print.auc=TRUE)
+```
+
+
+
+
+
+
+
+
+
+```{r}
+coefficients <- coef(ridge_model)
+print(coefficients)
+```
+
+
+```{r}
+# Convertire i coefficienti in un data frame per una facile manipolazione
+coeff_df <- as.data.frame(as.matrix(coefficients))
+colnames(coeff_df) <- "Coefficient"
+coeff_df$Variable <- rownames(coeff_df)
+coeff_df <- coeff_df[order(abs(coeff_df$Coefficient), decreasing = TRUE), ]
+
+# Visualizzare le prime variabili più influenti
+print(head(coeff_df, 15))
+
+```
+
+
+
+```{r}
+
+
+```
+
+
+```{r}
+
+library(readr)
+library(dplyr)
+library(psych)
+library(factoextra)
+library(ggplot2)
+library(reshape2)
+
+# Caricare i dati
+df <- read_csv("Dataset/airline_passenger_satisfaction.csv")
+
+# Visualizzare i primi record del dataset per confermare il caricamento corretto
+head(df)
+
+# Rimuovere le colonne non numeriche e non rilevanti
+df_clean <- df %>%
+  select(-c(ID, Gender, `Customer Type`, `Type of Travel`, Class, Satisfaction))
+
+# Gestire i valori mancanti eliminando le righe con qualsiasi valore mancante
+df_clean <- na.omit(df_clean)
+
+# Standardizzare i dati
+df_standardized <- scale(df_clean)
+
+# Convertire la variabile target in binaria (1 se 'satisfied', altrimenti 0)
+# Sincronizzare il target con le righe rimaste dopo la pulizia
+target <- df$Satisfaction[rownames(df_clean)]
+target <- ifelse(target == 'satisfied', 1, 0)
+
+# Eseguire l'analisi fattoriale
+fa_result <- fa(df_standardized, nfactors = 5, rotate = "varimax")
+
+# Ottenere i loadings dei fattori
+loadings <- fa_result$loadings
+
+# Calcolare i punteggi dei fattori
+factor_scores <- as.data.frame(df_standardized %*% loadings)
+
+# Eseguire l'analisi di regressione
+regression_model <- lm(target ~ ., data = factor_scores, family = binomial)
+
+# Stampare i coefficienti di regressione
+coefficients <- summary(regression_model)$coefficients
+print(coefficients)
+
+# Creare un dataframe per visualizzare i nomi dei fattori e i loro coefficienti
+factor_names <- colnames(factor_scores)
+coefficients_df <- data.frame(Factor = factor_names, Coefficient = coefficients[2:6, "Estimate"])
+print(coefficients_df)
+
+# Creare un dataframe per i loadings dei fattori
+factor_loadings_df <- as.data.frame(loadings)
+colnames(factor_loadings_df) <- paste("Factor", 1:5, sep = " ")
+rownames(factor_loadings_df) <- colnames(df_clean)
+
+# Visualizzare i loadings dei fattori come una heatmap
+factor_loadings_melt <- melt(factor_loadings_df)
+ggplot(factor_loadings_melt, aes(Var2, Var1, fill = value)) +
+  geom_tile() +
+  geom_text(aes(label = round(value, 2)), color = "black") +
+  scale_fill_gradient2(low = "blue", high = "red", mid = "white", midpoint = 0) +
+  theme_minimal() +
+  labs(title = "Factor Loadings Heatmap", x = "Factors", y = "Variables")
+
+# Ottenere i valori eigen
+eigenvalues <- fa_result$e.values
+
+# Visualizzare i valori eigen come un grafico a barre
+eigen_df <- data.frame(Factor = paste("Factor", 1:length(eigenvalues), sep = " "), Eigenvalue = eigenvalues)
+ggplot(eigen_df, aes(Factor, Eigenvalue)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  theme_minimal() +
+  labs(title = "Eigenvalues", x = "Factors", y = "Eigenvalue") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+# Visualizzare la tabella dei loadings dei fattori
+print("Factor Loadings Table:")
+print(factor_loadings_df)
+
+```
+
+
+
+
+
+

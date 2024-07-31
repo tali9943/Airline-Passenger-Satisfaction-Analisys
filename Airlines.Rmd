@@ -1,0 +1,160 @@
+---
+  title: "AirLines"
+---
+  
+  ```
+{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r}
+
+# Installa e carica i pacchetti necessari
+install.packages("readr")
+install.packages("dplyr")
+install.packages("caTools")
+install.packages("ggplot2")
+install.packages("pROC")
+
+library(readr)
+library(dplyr)
+library(caTools)
+library(ggplot2)
+library(pROC)
+
+# Carica il dataset
+data <- read.csv("Dataset/airline_passenger_satisfaction.csv") 
+
+# Controlla i dati caricati
+print(head(data))
+print(str(data))
+
+```
+
+
+
+```{r}
+# Converti la colonna Satisfaction in una variabile binaria
+data$Satisfaction <- ifelse(data$Satisfaction == "Satisfied", 1, 0)
+
+# Converti le variabili categoriali in fattori
+data$Gender <- as.factor(data$Gender)
+data$Customer_Type <- as.factor(data$`Customer.Type`)
+data$Type_of_Travel <- as.factor(data$`Type.of.Travel`)
+data$Class <- as.factor(data$Class)
+
+# Rimuovi l'ID e le colonne originali non più necessarie
+data <- select(data, -ID, -`Customer.Type`, -`Type.of.Travel`)
+
+# Controlla i dati dopo la trasformazione
+print(str(data))
+
+
+```
+
+
+
+
+
+```{r}
+
+# Funzione per costruire il modello logistico
+build_logistic_model <- function(data) {
+  # Dividi il dataset in training e test set
+  set.seed(123)
+  sample <- sample.split(data$Satisfaction, SplitRatio = 0.7)
+  train <- subset(data, sample == TRUE)
+  test <- subset(data, sample == FALSE)
+  
+  # Costruisci il modello logistico
+  model <- glm(Satisfaction ~ ., data = train, family = binomial)
+  
+  # Riassunto del modello
+  print(summary(model))
+  
+  # Predizioni sul training set
+  train$predicted_prob <- predict(model, newdata = train, type = "response")
+  train$predicted_class <- ifelse(train$predicted_prob > 0.5, 1, 0)
+  
+  # Predizioni sul test set
+  test$predicted_prob <- predict(model, newdata = test, type = "response")
+  test$predicted_class <- ifelse(test$predicted_prob > 0.5, 1, 0)
+  
+  # Matrice di confusione per il training set
+  confusion_matrix_train <- table(train$Satisfaction, train$predicted_class)
+  
+  # Matrice di confusione per il test set
+  confusion_matrix_test <- table(test$Satisfaction, test$predicted_class)
+  
+  # Calcola l'accuratezza del modello per il training set
+  accuracy_train <- sum(diag(confusion_matrix_train)) / sum(confusion_matrix_train)
+  
+  # Calcola l'accuratezza del modello per il test set
+  accuracy_test <- sum(diag(confusion_matrix_test)) / sum(confusion_matrix_test)
+  
+  list(model = model, accuracy_train = accuracy_train, accuracy_test = accuracy_test,
+       confusion_matrix_train = confusion_matrix_train, confusion_matrix_test = confusion_matrix_test,
+       train_data = train, test_data = test)
+}
+
+# Costruisci il modello e ottieni i risultati
+results <- build_logistic_model(data)
+
+# Visualizza i risultati
+print(results$model)
+print(paste("Train Accuracy: ", results$accuracy_train))
+print(paste("Test Accuracy: ", results$accuracy_test))
+print(results$confusion_matrix_train)
+print(results$confusion_matrix_test)
+
+
+```
+
+
+
+
+
+
+
+
+```{r}
+# Plot delle probabilità predette vs. le classi reali nel test set
+ggplot(results$test_data, aes(x = as.factor(Satisfaction), y = predicted_prob)) +
+  geom_boxplot() +
+  labs(title = "Predicted Probabilities vs Actual Satisfaction",
+       x = "Actual Satisfaction",
+       y = "Predicted Probability")
+
+# Plot della curva ROC per il test set
+roc_curve <- roc(results$test_data$Satisfaction, results$test_data$predicted_prob)
+
+ggplot() +
+  geom_line(aes(x = 1 - roc_curve$specificities, y = roc_curve$sensitivities), color = "blue") +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red") +
+  labs(title = "ROC Curve",
+       x = "1 - Specificity",
+       y = "Sensitivity")
+
+# Plot dei coefficienti del modello
+coefficients <- summary(results$model)$coefficients
+coefficients_df <- as.data.frame(coefficients)
+coefficients_df$Variable <- rownames(coefficients_df)
+
+ggplot(coefficients_df, aes(x = reorder(Variable, Estimate), y = Estimate)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  labs(title = "Model Coefficients",
+       x = "Variables",
+       y = "Estimate")
+
+```
+
+
+
+
+
+
+
+
+
+
+
