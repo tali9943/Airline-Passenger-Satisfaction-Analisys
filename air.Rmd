@@ -26,64 +26,179 @@ head(data)
 
 ```
 
-Correlation matrix
+
+
+
+## Stepwise Regression models
+
+In this section I am going to implement the stepwise regression model using three different modes: forward, backward and both.
+
+
+
+```{r}
+null_model <- glm(Satisfaction ~ 1, data = train, family = binomial)
+full_model <- glm(Satisfaction ~ ., data = train, family = binomial)
+summary(full_model)
+```
+
+
+### Forward
+
+
+
+```{r}
+stepwise_model_forward <- step(null_model, scope = list(lower = null_model, upper = full_model), direction = "forward")
+summary(stepwise_model_forward)
+```
+AIC is a measure of the relative entropy of a model, i.e. the amount of information lost when using the model to describe the data.
+A lower AIC value indicates a better model.
+During model selection, the AIC values of different models are compared. 
+The model with the lowest AIC is considered the best of those compared.
+
+
+
+Below i run a test using the test set of mine dataset to see the capacity of the model:
 ```{r}
 
+stepwise_model_forward_probs <- predict(stepwise_model_forward, testX, type = "response")
 
-# Caricare le librerie necessarie
-library(readr)
-library(dplyr)
-library(corrplot)
-library(ggplot2)
+stepwise_model_forward_roc <- roc(test$Satisfaction ~ stepwise_model_forward_probs, plot=TRUE, print.auc=TRUE)
+```
+```{r}
+coords(stepwise_model_forward_roc, x=0.5, ret="all")
+```
+And the following considering the best threshold:
+```{r}
+coords(stepwise_model_forward_roc, x="best", ret="all")
+
+```
+
+### Backward
+
+
+```{r}
+stepwise_model_backward <- step(full_model, scope = list(lower = null_model, upper = full_model), direction = "backward")
+summary(stepwise_model_backward)
+
+```
+
+
+```{r}
+stepwise_model_backward_probs <- predict(stepwise_model_backward, testX, type = "response")
+
+stepwise_model_backward_roc <- roc(test$Satisfaction ~ stepwise_model_backward_probs, plot=TRUE, print.auc=TRUE)
+```
+roc function reports the following results with a threshold of 0.5:
+```{r}
+coords(stepwise_model_backward_roc, x=0.5, ret="all")
+```
+And the following considering the best threshold:
+```{r}
+coords(stepwise_model_backward_roc, x="best", ret="all")
+
+```
+
+### Both
+
+
+```{r}
+stepwise_model_both <- step(full_model, scope = list(lower = null_model, upper = full_model), direction = "both")
+summary(stepwise_model_both)
+
+```
+
+```{r}
+stepwise_model_both_probs <- predict(stepwise_model_both, testX, type = "response")
+
+stepwise_model_both_roc <- roc(test$Satisfaction ~ stepwise_model_both_probs, plot=TRUE, print.auc=TRUE)
+```
+
+roc function reports the following results with a threshold of 0.5:
+```{r}
+coords(stepwise_model_backward_roc, x=0.5, ret="all")
+```
+
+And the following considering the best threshold:
+```{r}
+coords(stepwise_model_backward_roc, x="best", ret="all")
+```
+
+## AIC comparison between models
+```{r}
+AIC(new_model)
+AIC(stepwise_model_forward)
+AIC(stepwise_model_backward)
+AIC(stepwise_model_both)
+```
 
 
 
-# Trasformazione delle variabili categoriche in variabili dummy
-train_dummy <- model.matrix(~ . - 1, data=data)
+## Lasso
 
-# Calcolo della matrice di correlazione
-cor_matrix <- cor(train_dummy)
 
-# Visualizzazione della matrice di correlazione con corrplot
-corrplot(cor_matrix, method="color", type="upper", tl.cex=0.6, tl.col="black")
+```{r}
+lasso_model<-glmnet(Satisfaction ~ ., data=train,family = "binomial", alpha = 1)
+plot(lasso_model)
 
-# Estrarre le correlazioni con la variabile Satisfaction
-cor_satisfaction <- as.data.frame(cor_matrix[,"SatisfactionSatisfied"])
+```
 
-# Rimuovere la correlazione della variabile con sé stessa
-cor_satisfaction <- cor_satisfaction[rownames(cor_satisfaction) != "SatisfactionSatisfied", , drop=FALSE]
 
-# Ordina le variabili in base alla loro correlazione con Satisfaction
-cor_satisfaction <- cor_satisfaction[order(-abs(cor_satisfaction$SatisfactionSatisfied)), , drop=FALSE]
 
-# Visualizzare le prime 10 variabili con la maggiore correlazione positiva
-top_positive <- cor_satisfaction %>% filter(SatisfactionSatisfied > 0) %>% head(10)
-print("Top 10 variabili con correlazione positiva:")
-print(top_positive)
+```{r}
+set.seed(1)
+cv.out <- cv.glmnet(Satisfaction ~ ., data=train,family = "binomial", alpha = 1, K=5)
+cv.out
+plot(cv.out)
+bestlam.lasso <- cv.out$lambda.min
+lasso.final <- glmnet(Satisfaction ~ .,  data=train , family = "binomial", alpha = 1, lambda = bestlam.lasso)
+```
 
-# Visualizzare le prime 10 variabili con la maggiore correlazione negativa
-top_negative <- cor_satisfaction %>% filter(SatisfactionSatisfied < 0) %>% head(10)
-print("Top 10 variabili con correlazione negativa:")
-print(top_negative)
 
-# Creare un grafico a barre per le variabili con maggiore correlazione positiva e negativa
-cor_satisfaction$Variable <- rownames(cor_satisfaction)
 
-# Seleziona le top 10 variabili positive e negative
-top_correlations <- rbind(head(cor_satisfaction[order(-cor_satisfaction$SatisfactionSatisfied), ], 10),
-                          head(cor_satisfaction[order(cor_satisfaction$SatisfactionSatisfied), ], 10))
+```{r}
+plot(lasso_model, xvar = "lambda") 
+abline(v = log(bestlam.lasso), lwd = 1.2, lty = "dashed")
+```
 
-# Grafico a barre
-ggplot(top_correlations, aes(x=reorder(Variable, SatisfactionSatisfied), y=SatisfactionSatisfied)) +
-  geom_bar(stat="identity", fill="steelblue") +
-  coord_flip() +
-  labs(title="Top 10 Correlazioni con Satisfaction",
-       x="Variabile",
-       y="Correlazione") +
-  theme_minimal()
 
-# Visualizzare la matrice di correlazione con le correlazioni
-print(cor_satisfaction)
+The Lasso solution for the selected value of lambda is:
+```{r}
+coef(lasso_model, bestlam.lasso)
+```
+
+
+
+
+```{r}
+lasso_model_probs <- predict(lasso_model, s = bestlam.lasso, newdata=test, type="response")
+lasso_model_roc <- roc(test$Satisfaction ~ lasso_model_probs, plot=TRUE, print.auc=TRUE)
+```
+
+
+Roc function reports the following results with a threshold of 0.5:
+```{r}
+coords(lasso_model_roc, x=0.5, ret="all")
+```
+And the following considering the best threshold:
+```{r}
+coords(lasso_model_roc, x="best", ret="all")
+
+```
+We can also try to fit a logistic regression model choosing the predictors suggested by Lasso.
+
+```{r}
+lasso_log <- glm(Satisfaction ~ Age +Customer.Type + Type.of.Travel + Class + Flight.Distance + Departure.Delay + Arrival.Delay
++ Departure.and.Arrival.Time.Convenience + Ease.of.Online.Booking + Check.in.Service + Online.Boarding + Gate.Location + On.board.Service + Seat.Comfort + Leg.Room.Service + Cleanliness +
+ Food.and.Drink + In.flight.Service + In.flight.Wifi.Service + In.flight.Entertainment + Baggage.Handling  , data = train, family = binomial)
+summary(lasso_log)
+```
+
+
+
+
+
+
+```{r}
 
 ```
 
@@ -100,79 +215,78 @@ print(cor_satisfaction)
 
 
 
+
+
+
+
+
+## Ridge Regression
+
+
 ```{r}
-# Conta il numero di clienti per ogni livello di soddisfazione
-satisfaction_counts <- data %>%
-  count(Satisfaction)
-
-# Crea un grafico a barre
-ggplot(satisfaction_counts, aes(x = Satisfaction, y = n, fill = Satisfaction)) +
-  geom_bar(stat = "identity") +
-  scale_fill_viridis_d() +
-  labs(title = "Distribuzione della Soddisfazione dei Clienti",
-       x = "Soddisfazione",
-       y = "Numero di Clienti") +
-  theme_minimal()
-
+ridge_model<-glmnet(Satisfaction ~ ., data=train, family = "binomial", alpha = 0)
+plot(ridge_model)
 ```
 
 
 
 
+
 ```{r}
-# Grafico di soddisfazione per tipo di viaggio
-ggplot(data, aes(x = `Type.of.Travel`, fill = Satisfaction)) +
-  geom_bar(position = "dodge") +
-  scale_fill_viridis_d() +
-  labs(title = "Soddisfazione per Tipo di Viaggio",
-       x = "Tipo di Viaggio",
-       y = "Numero di Clienti") +
-  theme_minimal()
+set.seed(1)
+cv.out <- cv.glmnet(Satisfaction ~ ., data=train,family = "binomial", alpha = 0, K=5)
+cv.out
+plot(cv.out)
+bestlam_ridge <- cv.out$lambda.min
+ridge_final <- glmnet(Satisfaction ~ .,  data=train , family = "binomial", alpha = 0, lambda = bestlam_ridge)
+```
+
+```{r}
+plot(ridge_model, xvar = "lambda") 
+abline(v = log(bestlam_ridge), lwd = 1.2, lty = "dashed")
+```
+
+
+The Lasso solution for the selected value of lambda is:
+```{r}
+coef(ridge_model, bestlam_ridge)
+```
+
+
+```{r}
+ridge_model_probs <- predict(ridge_model, s = bestlam_ridge, newdata=test, type="response")
+ridge_model_roc <- roc(test$Satisfaction ~ ridge_model_probs, plot=TRUE, print.auc=TRUE)
+```
+
+
+
+
+
+
+
+
+
+```{r}
+coefficients <- coef(ridge_model)
+print(coefficients)
+```
+
+
+```{r}
+# Convertire i coefficienti in un data frame per una facile manipolazione
+coeff_df <- as.data.frame(as.matrix(coefficients))
+colnames(coeff_df) <- "Coefficient"
+coeff_df$Variable <- rownames(coeff_df)
+coeff_df <- coeff_df[order(abs(coeff_df$Coefficient), decreasing = TRUE), ]
+
+# Visualizzare le prime variabili più influenti
+print(head(coeff_df, 15))
 
 ```
 
 
 
 ```{r}
-# Grafico di soddisfazione per classe di volo
-ggplot(data, aes(x = Class, fill = Satisfaction)) +
-  geom_bar(position = "dodge") +
-  scale_fill_viridis_d() +
-  labs(title = "Soddisfazione per Classe di Volo",
-       x = "Classe di Volo",
-       y = "Numero di Clienti") +
-  theme_minimal()
+
 
 ```
-
-```{r}
-# Grafico di soddisfazione per tipo di cliente
-ggplot(data, aes(x = `Customer.Type`, fill = Satisfaction)) +
-  geom_bar(position = "dodge") +
-  scale_fill_viridis_d() +
-  labs(title = "Soddisfazione per Tipo di Cliente",
-       x = "Tipo di Cliente",
-       y = "Numero di Clienti") +
-  theme_minimal()
-
-```
-
-
-
-```{r}
-# Grafico di soddisfazione in base all’età
-ggplot(data, aes(x = Satisfaction, y = Age, fill = Satisfaction)) +
-  geom_boxplot() +
-  scale_fill_viridis_d() +
-  labs(title = "Soddisfazione in base all’Età",
-       x = "Soddisfazione",
-       y = "Età") +
-  theme_minimal()
-
-```
-
-```{r}
-
-```
-
-

@@ -1,8 +1,12 @@
 ---
 title: "Airline passenger satisfaction"
+author: "Tommaso Talamo"
+date: "`r Sys.Date()`"
 output:
-  html_document:
-    df_print: paged
+  html_document: 
+    toc: true
+    toc_float: true
+    number_sections: true
 ---
   
 ```{r setup, include=FALSE}
@@ -11,8 +15,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
-Caricamento delle librerie necessarie
-
+Loading of required libraries
 ```{r, message = FALSE}
 library(MASS)
 library(boot)
@@ -31,13 +34,86 @@ library(GGally)
 
 ```
 
+# Aim of the project
+
+The aim of the project is to perform a logistic regression analysis to predict airline passenger satisfaction through a binary classification.
+
+In particular, I would like to focus on finding the most important categories for which passengers are most affected to be satisfied or dissatisfied, then move on to evaluate the best predictors for whether a passenger is satisfied or not.
+
+To achieve this I will implement the following models:
+
+* Logistic regression model;
+
+* Stepwise model;
+
+* Lasso model;
+
+* Ridge model.
+
+I will evaluate the results of the models to define which parameters are the most significant in predicting passenger satisfaction.
 
 
-## Preparation Dataset
+
+
+# Dataset description 
 
 ```{r}
 data <- read.csv("Dataset/airline_passenger_satisfaction.csv")
 ```
+
+
+The dataset collects airline passenger satisfaction ratings. 
+It consists of 24 categories/columns:
+
+1. `ID`: Unique identifier for each passenger.
+
+2. `GENDER`: Specifies the gender of the passenger.
+
+3. `AGE`: Age of the passenger.
+
+4. `CUSTUMER TYPE `: Indicates if the customer is flying for the first time or is a returning customer.
+
+5. `TYPE OF TRAVEL `:  Specifies the purpose of the travel(Business or Personal).
+
+6. `CLASS`: Class of service booked by the passenger(Business, Economy or Economy Plus).
+
+7. `FLIGHT DISTANCE`: The distance of the flight in miles.
+
+8. `DEPARTURE DELAY `: The delay in departure time in minutes.
+
+9. `ARRIVAL DELAY`: The delay in arrival time in minutes.
+
+10. `DEPARTURE AND ARRIVAL TIME CONVENIENCE`: Passenger's rating of the convenience of the departure and arrival times. Scale: 1 to 5, where 1 is the lowest and 5 is the highest.
+
+11. `EASE OF ONLY BOOKING`: Passenger's rating of the ease of online booking. Scale: 1 to 5.
+
+12. `CHECK-IN SERVICES`: Passenger's rating of the check-in service. Scale: 1 to 5.
+
+13. `ONLINE BOARDING`: Passenger's rating of the online boarding process. Scale: 1 to 5.
+
+14. `GATE LOCATION`:  Passenger's rating of the gate location. Scale: 1 to 5.
+
+15. `ON-BOARD SERVICE`: Passenger's rating of the on-board service. Scale: 1 to 5.
+
+16. `SEAT COMFORT `: Passenger's rating of the comfort of the seat. Scale: 1 to 5.
+
+17. `LEG ROOM SERVICES`: Passenger's rating of the leg room service. Scale: 1 to 5.
+
+18. `CLEANLINESS`: Passenger's rating of the cleanliness of the aircraft. Scale: 1 to 5.
+
+19. `FOOD AND DRINK `:Passenger's rating of the food and drink service. Scale: 1 to 5.
+
+20. `IN-FLIGHT SERVICE`:Passenger's rating of the in-flight service. Scale: 1 to 5.
+
+21. `IN-FLIGHT WIFI SERVICE`:Passenger's rating of the in-flight wifi service. Scale: 1 to 5.
+
+22. `IN FLIGHT ENTERTAINEMENT `:Passenger's rating of the in-flight entertainment. Scale: 1 to 5.
+
+23. `BAGGAGE HANDLING`:Passenger's rating of the baggage handling service. Scale: 1 to 5.
+
+24. `SATISFACTION`: Overall satisfaction of the passenger(Neutral or Dissatisfied, Satisfied).
+
+
 
 
 
@@ -51,12 +127,10 @@ dimension_data
 
 
 
-```{r}
-summary(data)
-print(dfSummary(data), method = 'render')   #'viewer' ,'browser', 'pander' and 'plain'
-```
 
+## Data cleaning and transformation
 
+In this section, we clean up the dataset by removing unnecessary data and missing values. Then we process the satisfaction in the most useful way for our objective.
 
 
 Remove usefull column of the dataset
@@ -64,6 +138,7 @@ Remove usefull column of the dataset
 data<- data %>% select(-ID)
 head(data)
 ```
+
 
 Remove observations with missing values
 ```{r}
@@ -73,9 +148,11 @@ dimension_data
 ```
 
 
-Trasformo la satisfaction in 0 e 1
-+ 0 = neutral or dissatisfied
-+ 1 = satisfied
+I transform satisfaction into binary value 0 and 1:
+
+* 0 = neutral or dissatisfied.
+
+* 1 = satisfied.
 
 
 ```{r}
@@ -86,20 +163,17 @@ head(data)
 ```
 
 ```{r}
-data <- data %>%
-  mutate_if(is.character, as.factor)
+data <- data %>% mutate_if(is.character, as.factor)
 summary(data)
 print(dfSummary(data), method = 'render')
 ```
 
 
+## Dataset division
 
+Split the dataset into train and test set.
 
-
-
-Split the dataset into train and test set
-
-```{r}
+```{r, echo = FALSE}
 partition_data <- function(data, target_var, train_ratio = 0.8, seed = NULL) {
   if (!is.null(seed)) {
     set.seed(seed)
@@ -137,30 +211,32 @@ testy <- split$testY
 ```
 
 
-## Analysis of data
+# Analysis of data
 In this section, I analyse the characteristics of the dataset to find the most important features for calculating the satisfaction.
 
 
-Correlation matrix
-```{r}
+## Correlation matrix
+```{r, echo = FALSE}
 
-
-# Trasformazione delle variabili categoriche in variabili dummy
 train_dummy <- model.matrix( ~ . - 1, data=data)
 
-# Calcolo della matrice di correlazione
 cor_matrix <- cor(train_dummy)
 
-
-# Visualizzazione della matrice di correlazione con corrplot
 corrplot(cor_matrix, method="color", type="upper", tl.cex=0.6, tl.col="black")
 
 
 ```
 
 
-```{r}
-plot_satisfaction <- function(data) {
+We can analyse the table by interpreting the values approaching blue as positive classes, i.e. improving customer satisfaction, and in red all the categories that can make a passenger dissatisfied.
+
+
+## Plots satisfaction percentage 
+
+Taking the most important categories from the correlation matrix, I go to analyse them separately to see the percentage of satisfaction linked to each category.
+
+```{r, echo = FALSE, warning = FALSE }
+plots_satisfaction_percentage <- function(data) {
 
   data$Satisfaction <- as.numeric(data$Satisfaction)
 
@@ -188,16 +264,25 @@ plot_satisfaction <- function(data) {
   }
 }
 
-plot_satisfaction(data)
+plots_satisfaction_percentage(data)
 
 
 ```
 
 
+Green shows the percentage of satisfied passengers while red shows the percentage of dissatisfied passengers.
+You can see that low ratings do not always lead to a negative result, this also depends on the other categories.
+In most cases a high rating (4 or 5) leads to a percentage of satisfied customers, but this is not always correct.
 
-```{r}
 
-plot_satisfaction <- function(data) {
+## Plots satisfied vs dissatisfied 
+
+Below, using the same categories, we look  the differences between the number of satisfied and dissatisfied passengers.
+
+
+```{r, echo = FALSE, warning = FALSE }
+
+plots_satisfied_dissatisfied_satisfaction <- function(data) {
   
   data$Type_of_Satisfaction <- factor(data$Satisfaction, levels = c('0', '1'), labels = c("Neutral or Dissatisfied", "Satisfied"))
   
@@ -221,43 +306,395 @@ plot_satisfaction <- function(data) {
   data$Type_of_Satisfaction <- NULL
 }
 
-plot_satisfaction(data)
+plots_satisfied_dissatisfied_satisfaction(data)
 ```
 
 
-
-# Implementation of models
-
-Cosa voglio fare eccc....
+It can be seen that for each category we always have satisfied and unsatisfied passengers, so using a single predictor is very difficult to predict customer satisfaction.
+It is necessary to evaluate which predictors are the most important in order to create a good model.
 
 
-## Logistic Regression
+
+
+
+
+# Logistic Regression
+
+I first implement a logistic regression model using all predictors.
 
 ```{r}
 model_with_all_predictors <- glm(Satisfaction ~ ., data = train, family = binomial)
 summary(model_with_all_predictors)
 ```
 
+We can see that most of the predictors are important for the model except at Flight Distance. Two other less important predictors are Gate Location and Food&Drink.
+This model performs very well using all predictors.
+
+What I will do in the next chapters is to create simpler models using fewer predictors. 
+To do this, I will perform two types of feature selection:
+
+1. The first by dividing the categories of the dataset into different classes summarising the categories; 
+
+2. The second by using the evaluate parameter of the model with all predictors. 
 
 
-------------------------------------------------------------
-
-## Feature selection 
-Analysing the previously created model, you can see that most of the predictors are useful for calculating ‘Satisfaction’ outside of ‘Flight_Distance’.
-What I am going to do now is to go and do a manual feature selection to see which predictors are the most significant in my model.
-
-To select the best parameters, I go through the results of the previous model and select the predictors with the largest estimate value. At each step I add a few predictors with a smaller estimate value until I reach a satisfactory result.
-
-For each model, I will add new predictors. Then I will run a test set to calculate the AUC area and finally calculate the accuracy.
 
 
-#### 00 model
+## First method: Selecting Characteristics with Categorical Classes
+
+After a thorough analysis, I merged the categories of the dataset into different classes in order to perform a more precise feature selection. Here are the following classes:
+
+
+* `Customer and Travel Type`: Customer.Type, Type.of.Travel, Class
+
+* `Time and Distance`: Flight.Distance, Departure.Delay, Arrival.Delay
+
+* `Convenience and Booking Services`: Departure.and.Arrival.Time.Convenience, 
+
+* `On-board Services`: Food.and.Drink, In.flight.Service, In.flight.Wifi.Service, In.flight.Entertainment
+
+* `Comfort and Cleanliness`: Seat.Comfort, Leg.Room.Service, Cleanliness
+
+* `Airport Services`: Gate.Location, On.board.Service, Baggage.Handling, Check.in.Service, Online.Boarding
+
+* `Demographic variables`: Age
+
+
+Next I go and create a model for each class listed above. Then I calculate the following values: AIC, AUC to see which model is the best. 
+Finally, for each model I run a test with two different threshold values: 0.5 and best threshold.
+At the end of the chapter there is a summary table with all the results.
+
+### Customer and Travel Type Model
+```{r}
+Customer_and_Travel_Type_model <- glm(Satisfaction ~ Customer.Type + Type.of.Travel + Class, data = train, family = binomial)    
+
+summary(Customer_and_Travel_Type_model)
+
+
+```
+
+Below the execution of the test set with the current model:
+```{r}
+Customer_and_Travel_Type_model_probs <- predict(Customer_and_Travel_Type_model, testX, type = "response")
+
+Customer_and_Travel_Type_model_roc <- roc(test$Satisfaction ~ Customer_and_Travel_Type_model_probs, plot=TRUE, print.auc=TRUE)
+```
+
+
+Returns all information for the classification threshold of 0.5.
+```{r}
+coords(Customer_and_Travel_Type_model_roc, x=0.5, ret="all")
+```
+Returns all information for the classification usign the best threshold.
+```{r}
+coords(Customer_and_Travel_Type_model_roc, x="best", ret="all")
+```
+
+Check the collinearity between predictors in a regression model. Collinearity occurs when two or more predictors in a model are highly correlated.
+```{r}
+check_collinearity <- vif(Customer_and_Travel_Type_model)
+check_collinearity
+```
+
+```{r}
+plot(allEffects(Customer_and_Travel_Type_model), ylab="probability of increasing satisfaction", rescale.axis=FALSE)
+```
+
+
+
+
+### Time and Distance Model
+
+```{r}
+Time_and_Distance_model <- glm(Satisfaction ~ Flight.Distance + Departure.Delay + Arrival.Delay, data = train, family = binomial)    
+
+summary(Time_and_Distance_model)
+
+
+```
+
+Below the execution of the test set with the current model:
+```{r}
+Time_and_Distance_model_probs <- predict(Time_and_Distance_model, testX, type = "response")
+
+Time_and_Distance_model_roc <- roc(test$Satisfaction ~ Time_and_Distance_model_probs, plot=TRUE, print.auc=TRUE)
+```
+
+
+Returns all information for the classification threshold of 0.5.
+```{r}
+coords(Time_and_Distance_model_roc, x=0.5, ret="all")
+```
+Returns all information for the classification usign the best threshold.
+```{r}
+coords(Time_and_Distance_model_roc, x="best", ret="all")
+```
+
+Check the collinearity between predictors in a regression model. Collinearity occurs when two or more predictors in a model are highly correlated.
+```{r}
+check_collinearity <- vif(Time_and_Distance_model)
+check_collinearity
+```
+
+```{r}
+plot(allEffects(Time_and_Distance_model), ylab="probability of satisfaction", rescale.axis=FALSE)
+```
+
+
+
+### Convenience and Booking Services Model
+
+
+```{r}
+Convenience_and_Booking_Services_model <- glm(Satisfaction ~ Departure.and.Arrival.Time.Convenience + Ease.of.Online.Booking, data = train, family = binomial)    
+
+summary(Convenience_and_Booking_Services_model)
+
+
+```
+
+Below the execution of the test set with the current model:
+```{r}
+Convenience_and_Booking_Services_model_probs <- predict(Convenience_and_Booking_Services_model, testX, type = "response")
+
+Convenience_and_Booking_Services_model_roc <- roc(test$Satisfaction ~ Convenience_and_Booking_Services_model_probs, plot=TRUE, print.auc=TRUE)
+```
+
+
+Returns all information for the classification threshold of 0.5.
+```{r}
+coords(Convenience_and_Booking_Services_model_roc, x=0.5, ret="all")
+```
+Returns all information for the classification usign the best threshold.
+```{r}
+coords(Convenience_and_Booking_Services_model_roc, x="best", ret="all")
+```
+
+Check the collinearity between predictors in a regression model. Collinearity occurs when two or more predictors in a model are highly correlated.
+```{r}
+check_collinearity <- vif(Convenience_and_Booking_Services_model)
+check_collinearity
+```
+```{r}
+plot(allEffects(Convenience_and_Booking_Services_model), ylab="probability of satisfaction", rescale.axis=FALSE)
+```
+
+
+
+
+### On-board Services Model  
+
+
+```{r}
+On_board_Services_model <- glm(Satisfaction ~ Food.and.Drink + In.flight.Service + In.flight.Wifi.Service + In.flight.Entertainment, data = train, family = binomial)    
+
+summary(On_board_Services_model)
+
+
+```
+
+Below the execution of the test set with the current model:
+```{r}
+On_board_Services_model_probs <- predict(On_board_Services_model, testX, type = "response")
+
+On_board_Services_model_model_roc <- roc(test$Satisfaction ~ On_board_Services_model_probs, plot=TRUE, print.auc=TRUE)
+```
+
+
+Returns all information for the classification threshold of 0.5.
+```{r}
+coords(On_board_Services_model_model_roc, x=0.5, ret="all")
+```
+Returns all information for the classification usign the best threshold.
+```{r}
+coords(On_board_Services_model_model_roc, x="best", ret="all")
+```
+
+Check the collinearity between predictors in a regression model. Collinearity occurs when two or more predictors in a model are highly correlated.
+```{r}
+check_collinearity <- vif(On_board_Services_model)
+check_collinearity
+```
+```{r}
+plot(allEffects(On_board_Services_model), ylab="probability of satisfaction", rescale.axis=FALSE)
+```
+
+
+
+
+### Comfort and Cleanliness Model  
+
+
+```{r}
+Comfort_and_Cleanliness_model <- glm(Satisfaction ~ Seat.Comfort + Leg.Room.Service + Cleanliness, data = train, family = binomial)    
+
+summary(Comfort_and_Cleanliness_model)
+
+
+```
+
+Below the execution of the test set with the current model:
+```{r}
+Comfort_and_Cleanliness_model_probs <- predict(Comfort_and_Cleanliness_model, testX, type = "response")
+
+Comfort_and_Cleanliness_model_roc <- roc(test$Satisfaction ~ Comfort_and_Cleanliness_model_probs, plot=TRUE, print.auc=TRUE)
+```
+
+
+Returns all information for the classification threshold of 0.5.
+```{r}
+coords(Comfort_and_Cleanliness_model_roc, x=0.5, ret="all")
+```
+Returns all information for the classification usign the best threshold.
+```{r}
+coords(Comfort_and_Cleanliness_model_roc, x="best", ret="all")
+```
+
+Check the collinearity between predictors in a regression model. Collinearity occurs when two or more predictors in a model are highly correlated.
+```{r}
+check_collinearity <- vif(Comfort_and_Cleanliness_model)
+check_collinearity
+```
+```{r}
+plot(allEffects(Comfort_and_Cleanliness_model), ylab="probability of satisfaction", rescale.axis=FALSE)
+```
+
+
+
+
+### Airport Services Model 
+
+
+```{r}
+Airport_Services_model <- glm(Satisfaction ~ Gate.Location + On.board.Service + Baggage.Handling + Check.in.Service + Online.Boarding, data = train, family = binomial)    
+
+summary(Airport_Services_model)
+
+
+```
+
+Below the execution of the test set with the current model:
+```{r}
+Airport_Services_model_probs <- predict(Airport_Services_model, testX, type = "response")
+
+Airport_Services_model_roc <- roc(test$Satisfaction ~ Airport_Services_model_probs, plot=TRUE, print.auc=TRUE)
+```
+
+
+Returns all information for the classification threshold of 0.5.
+```{r}
+coords(Airport_Services_model_roc, x=0.5, ret="all")
+```
+Returns all information for the classification usign the best threshold.
+```{r}
+coords(Airport_Services_model_roc, x="best", ret="all")
+```
+
+Check the collinearity between predictors in a regression model. Collinearity occurs when two or more predictors in a model are highly correlated.
+```{r}
+check_collinearity <- vif(Airport_Services_model)
+check_collinearity
+```
+```{r}
+plot(allEffects(Airport_Services_model), ylab="probability of satisfaction", rescale.axis=FALSE)
+```
+
+
+
+
+### Demographic variables Model
+```{r}
+Demographic_variables_model <- glm(Satisfaction ~ Age, data = train, family = binomial)    
+
+summary(Demographic_variables_model)
+
+```
+
+Below the execution of the test set with the current model:
+```{r}
+Demographic_variables_model_probs <- predict(Demographic_variables_model, testX, type = "response")
+
+Demographic_variables_model_roc <- roc(test$Satisfaction ~ Demographic_variables_model_probs, plot=TRUE, print.auc=TRUE)
+
+```
+
+
+Returns all information for the classification threshold of 0.5.
+```{r}
+coords(Demographic_variables_model_roc, x=0.5, ret="all")
+```
+Returns all information for the classification usign the best threshold.
+```{r}
+coords(Demographic_variables_model_roc, x="best", ret="all")
+```
+```{r}
+plot(allEffects(Demographic_variables_model), ylab="probability of satisfaction", rescale.axis=FALSE)
+```
+
+
+
+## Summary of results of the first method
+
+Below is a table summarising all the results of previous models:
+```{r, echo = FALSE}
+library(knitr)
+model_data <- data.frame(
+  Model = c("Customer and Travel Type", 
+            "Time and Distance", 
+            "Convenience and Booking Services", 
+            "On-board Services", 
+            "Comfort and Cleanliness", 
+            "Airport Services", 
+            "Demographic variables"),
+  AIC = c(AIC(Customer_and_Travel_Type_model), AIC(Time_and_Distance_model), AIC(Convenience_and_Booking_Services_model), AIC(On_board_Services_model), AIC(Comfort_and_Cleanliness_model), AIC(Airport_Services_model), AIC(Demographic_variables_model)),
+  AUC = c(auc(Customer_and_Travel_Type_model_roc), auc(Time_and_Distance_model_roc), auc(Convenience_and_Booking_Services_model_roc),auc(On_board_Services_model_model_roc), auc(Comfort_and_Cleanliness_model_roc), auc(Airport_Services_model_roc), auc(Demographic_variables_model_roc)),
+  `Threshold Accuracy 0.5` = c(0.780,0.659,0.590,0.711,0.720,0.798,0.531),
+  `Best Threshold` = c(0.773,0.659,0.561,0.708,0.714,0.806,0.587),
+  `Number of predictors` = c(3,3,1,4,3,5,1),
+  stringsAsFactors = FALSE
+)
+
+
+print(model_data)
+```
+AIC is a measure of the relative entropy of a model, i.e. the amount of information lost when using the model to describe the data.
+A lower AIC value indicates a better model.
+The model with the lowest AIC is considered the best of those compared.
+
+Among the different categories created, we can see that the best model is the one based on the services provided by the airport.
+It has indeed better results in all categories and especially in the accuracy performed with the test set.
+The model uses the following predictors: Gate.Location, On.board.Service, Baggage.Handling, Check.in.Service , Online.Boarding.
+
+Providing services at a certain level within the airport leads to greater customer satisfaction.
+From the table, it can be seen that other categories are good for assessing customer satisfaction, such as Customer and Travel Type, which shows results very close to the best model.
+
+We can see that satisfaction is affected by many variables.
+
+
+
+
+
+
+
+
+## Second method: Feature selection with estimate value
+
+Analysing the first model created above, the one with all the predictors, it can be seen that most of the predictors are useful for calculating 'Satisfaction' outside the 'Distance_flight'.
+I will now make a manual feature selection to see which predictors are the most significant in my model.
+
+To select the best predictors, I analyse the results of the previous model and select the predictors with the highest estimated value. At each step, I add some predictors with a lower estimated value until I reach a satisfactory result.
+
+For each model and then at each step, I add new predictors. Then I perform a series of tests to calculate the AUC area and finally calculate the accuracy.
+
+### 00-estimate model
+
+The first model uses the two predictors with the largest value: Customer.Type and Type.of.Travel.
+In this case we take predictors that have the power of 00 as their estimate value.
+
 ```{r}
 o0_model <- glm(Satisfaction ~ Customer.Type + Type.of.Travel, data = train, family = binomial)    
 
 summary(o0_model)
-
-
 ```
 
 Below the execution of the test set with the current model:
@@ -281,8 +718,15 @@ check_collinearity <- vif(o0_model)
 check_collinearity
 ```
 
+This first model shows that by using, as a basic criterion for assessing passenger satisfaction, the type of customer and the type of journey they make I can evaluate satisfaction in a good way.
 
-#### 01 model
+
+
+### 01-estimate model
+In the second model, we use the previous predictors and add others by taking estimate values with exponent 01.
+
+
+
 ```{r}
 o1_model <- glm(Satisfaction ~ Customer.Type + Type.of.Travel + Class + Departure.and.Arrival.Time.Convenience + Ease.of.Online.Booking + Check.in.Service + Online.Boarding + On.board.Service + Leg.Room.Service + Cleanliness + In.flight.Service + In.flight.Wifi.Service + In.flight.Wifi.Service + Baggage.Handling  
  , data = train, family = binomial)    
@@ -315,7 +759,16 @@ check_collinearity
 ```
 
 
-#### 02 model
+We can see that the second model brings clear improvements in the results but increasing the predictors from 2 to 13.
+
+
+
+
+
+### 02-estimate model
+
+We add further predictors to the model by taking values with exponent 02.
+
 ```{r}
 o2_model <- glm(Satisfaction ~ Customer.Type + Type.of.Travel + Class + Departure.and.Arrival.Time.Convenience + Ease.of.Online.Booking + Check.in.Service + Online.Boarding + On.board.Service + Leg.Room.Service + Cleanliness + In.flight.Service + In.flight.Wifi.Service + In.flight.Wifi.Service + Baggage.Handling + Gender + Seat.Comfort + In.flight.Entertainment 
  , data = train, family = binomial)    
@@ -345,9 +798,17 @@ check_collinearity <- vif(o2_model)
 check_collinearity
 ```
 
+In the third model we can see a slight improvement over the previous one, but the results are still very similar.
+We increase from 13 to 16 predictors used.
 
 
-#### 03 model
+
+
+
+### 03-estimate model
+
+Last model, in this case we also use predictors with value 03.
+
 ```{r}
 o3_model <- glm(Satisfaction ~ Customer.Type + Type.of.Travel + Class + Departure.and.Arrival.Time.Convenience + Ease.of.Online.Booking + Check.in.Service + Online.Boarding + On.board.Service + Leg.Room.Service + Cleanliness + In.flight.Service + In.flight.Wifi.Service + In.flight.Wifi.Service + Baggage.Handling + Gender + Seat.Comfort + In.flight.Entertainment + Departure.Delay + Arrival.Delay + Age
  , data = train, family = binomial)    
@@ -378,18 +839,63 @@ check_collinearity
 ```
 It can be seen that there is a strong collinearity between two predictors: Departure.Delay and Arrival.Delay.
 
-----------------------------------------------------------------------------------------
 
 
 
 
 
 
-## Stepwise Regression models
+## Summary of results of the second method
+
+Below is a table summarising all the results of previous models:
+```{r, echo = FALSE}
+library(knitr)
+library(ROCR)
+
+model_data <- data.frame(
+  Model = c("00-model", 
+            "01-model", 
+            "02-model", 
+            "03-model"),
+  AIC = c(AIC(o0_model),AIC(o1_model), AIC(o2_model), AIC(o3_model) ),
+  AUC = c(auc(o0_model_roc),auc(o1_model_roc), auc(o2_model_roc),auc(o3_model_roc) ),
+  `Threshold Accuracy 0.5` = c(0.77,0.87, 0.87, 0.87),
+  `Best Threshold` = c(0.77, 0.87, 0.87, 0.87 ),
+  `Number of predictors` = c(2,13,16,19),
+  stringsAsFactors = FALSE
+)
+
+
+print(model_data)
+```
+
+We can see that the results are very similar except for the first model. Two predictors are not enough to have a complete model, but it is also not necessary to use all of them to achieve good results.
+
+ADD COMMENT FOR NUMBER OF PREDICTORS + PERFORMANCE. ASK THE PROF!
+
+
+
+## Comparison results between the two method
+
+DA COMPLETARE DOPO COLLOQUIO
+
+
+
+
+
+
+
+
+
+
+
+
+# Stepwise Regression models
 
 In this section I am going to implement the stepwise regression model using three different modes: forward, backward and both.
 
-
+I first implement two initial models: the first with only one predictor and the second with all predictors.
+The aim of this model is to increase or decrease the number of predictors to find the most important predictors. 
 
 ```{r}
 null_model <- glm(Satisfaction ~ 1, data = train, family = binomial)
@@ -398,19 +904,12 @@ summary(full_model)
 ```
 
 
-### Forward
-
-
+## Forward
 
 ```{r}
 stepwise_model_forward <- step(null_model, scope = list(lower = null_model, upper = full_model), direction = "forward")
 summary(stepwise_model_forward)
 ```
-AIC is a measure of the relative entropy of a model, i.e. the amount of information lost when using the model to describe the data.
-A lower AIC value indicates a better model.
-During model selection, the AIC values of different models are compared. 
-The model with the lowest AIC is considered the best of those compared.
-
 
 
 Below i run a test using the test set of mine dataset to see the capacity of the model:
@@ -420,16 +919,19 @@ stepwise_model_forward_probs <- predict(stepwise_model_forward, testX, type = "r
 
 stepwise_model_forward_roc <- roc(test$Satisfaction ~ stepwise_model_forward_probs, plot=TRUE, print.auc=TRUE)
 ```
+
 ```{r}
 coords(stepwise_model_forward_roc, x=0.5, ret="all")
 ```
+
 And the following considering the best threshold:
 ```{r}
 coords(stepwise_model_forward_roc, x="best", ret="all")
 
 ```
 
-### Backward
+
+## Backward
 
 
 ```{r}
@@ -444,18 +946,20 @@ stepwise_model_backward_probs <- predict(stepwise_model_backward, testX, type = 
 
 stepwise_model_backward_roc <- roc(test$Satisfaction ~ stepwise_model_backward_probs, plot=TRUE, print.auc=TRUE)
 ```
+
 roc function reports the following results with a threshold of 0.5:
 ```{r}
 coords(stepwise_model_backward_roc, x=0.5, ret="all")
 ```
+
 And the following considering the best threshold:
 ```{r}
 coords(stepwise_model_backward_roc, x="best", ret="all")
 
 ```
 
-### Both
 
+## Both
 
 ```{r}
 stepwise_model_both <- step(full_model, scope = list(lower = null_model, upper = full_model), direction = "both")
@@ -479,259 +983,26 @@ And the following considering the best threshold:
 coords(stepwise_model_backward_roc, x="best", ret="all")
 ```
 
-## AIC comparison between models
-```{r}
-AIC(new_model)
-AIC(stepwise_model_forward)
-AIC(stepwise_model_backward)
-AIC(stepwise_model_both)
+
+## Summary of stepwise results
+
+Below is a table summarising all the results of previous models:
+```{r, echo = FALSE}
+library(knitr)
+model_data <- data.frame(
+  Model = c("stepwise forward", 
+            "stepwise backward", 
+            "stepwise both"), 
+  AIC = c(AIC(stepwise_model_forward),AIC(stepwise_model_backward),AIC(stepwise_model_both) ),
+  AUC = c(auc(stepwise_model_forward_roc), auc(stepwise_model_backward_roc), auc(stepwise_model_both_roc) ),
+  `Threshold Accuracy 0.5` = c(0.875,0.875, 0.875),
+  `Best Threshold` = c(0.874, 0.874, 0.874 ),
+  `Number of predictors` = c(21,21,21),
+  stringsAsFactors = FALSE
+)
+
+
+print(model_data)
 ```
-
-
-
-## Lasso
-
-
-```{r}
-lasso_model<-glmnet(Satisfaction ~ ., data=train,family = "binomial", alpha = 1)
-plot(lasso_model)
-
-```
-
-
-
-```{r}
-set.seed(1)
-cv.out <- cv.glmnet(Satisfaction ~ ., data=train,family = "binomial", alpha = 1, K=5)
-cv.out
-plot(cv.out)
-bestlam.lasso <- cv.out$lambda.min
-lasso.final <- glmnet(Satisfaction ~ .,  data=train , family = "binomial", alpha = 1, lambda = bestlam.lasso)
-```
-
-
-
-```{r}
-plot(lasso_model, xvar = "lambda") 
-abline(v = log(bestlam.lasso), lwd = 1.2, lty = "dashed")
-```
-
-
-The Lasso solution for the selected value of lambda is:
-```{r}
-coef(lasso_model, bestlam.lasso)
-```
-
-
-
-
-```{r}
-lasso_model_probs <- predict(lasso_model, s = bestlam.lasso, newdata=test, type="response")
-lasso_model_roc <- roc(test$Satisfaction ~ lasso_model_probs, plot=TRUE, print.auc=TRUE)
-```
-
-
-Roc function reports the following results with a threshold of 0.5:
-```{r}
-coords(lasso_model_roc, x=0.5, ret="all")
-```
-And the following considering the best threshold:
-```{r}
-coords(lasso_model_roc, x="best", ret="all")
-
-```
-We can also try to fit a logistic regression model choosing the predictors suggested by Lasso.
-
-```{r}
-lasso_log <- glm(Satisfaction ~ Age +Customer.Type + Type.of.Travel + Class + Flight.Distance + Departure.Delay + Arrival.Delay
-+ Departure.and.Arrival.Time.Convenience + Ease.of.Online.Booking + Check.in.Service + Online.Boarding + Gate.Location + On.board.Service + Seat.Comfort + Leg.Room.Service + Cleanliness +
- Food.and.Drink + In.flight.Service + In.flight.Wifi.Service + In.flight.Entertainment + Baggage.Handling  , data = train, family = binomial)
-summary(lasso_log)
-```
-
-
-
-
-
-
-```{r}
-
-```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-## Ridge Regression
-
-
-```{r}
-ridge_model<-glmnet(Satisfaction ~ ., data=train, family = "binomial", alpha = 0)
-plot(ridge_model)
-```
-
-
-
-
-
-```{r}
-set.seed(1)
-cv.out <- cv.glmnet(Satisfaction ~ ., data=train,family = "binomial", alpha = 0, K=5)
-cv.out
-plot(cv.out)
-bestlam_ridge <- cv.out$lambda.min
-ridge_final <- glmnet(Satisfaction ~ .,  data=train , family = "binomial", alpha = 0, lambda = bestlam_ridge)
-```
-
-```{r}
-plot(ridge_model, xvar = "lambda") 
-abline(v = log(bestlam_ridge), lwd = 1.2, lty = "dashed")
-```
-
-
-The Lasso solution for the selected value of lambda is:
-```{r}
-coef(ridge_model, bestlam_ridge)
-```
-
-
-```{r}
-ridge_model_probs <- predict(ridge_model, s = bestlam_ridge, newdata=test, type="response")
-ridge_model_roc <- roc(test$Satisfaction ~ ridge_model_probs, plot=TRUE, print.auc=TRUE)
-```
-
-
-
-
-
-
-
-
-
-```{r}
-coefficients <- coef(ridge_model)
-print(coefficients)
-```
-
-
-```{r}
-# Convertire i coefficienti in un data frame per una facile manipolazione
-coeff_df <- as.data.frame(as.matrix(coefficients))
-colnames(coeff_df) <- "Coefficient"
-coeff_df$Variable <- rownames(coeff_df)
-coeff_df <- coeff_df[order(abs(coeff_df$Coefficient), decreasing = TRUE), ]
-
-# Visualizzare le prime variabili più influenti
-print(head(coeff_df, 15))
-
-```
-
-
-
-```{r}
-
-
-```
-
-
-```{r}
-
-library(readr)
-library(dplyr)
-library(psych)
-library(factoextra)
-library(ggplot2)
-library(reshape2)
-
-# Caricare i dati
-df <- read_csv("Dataset/airline_passenger_satisfaction.csv")
-
-# Visualizzare i primi record del dataset per confermare il caricamento corretto
-head(df)
-
-# Rimuovere le colonne non numeriche e non rilevanti
-df_clean <- df %>%
-  select(-c(ID, Gender, `Customer Type`, `Type of Travel`, Class, Satisfaction))
-
-# Gestire i valori mancanti eliminando le righe con qualsiasi valore mancante
-df_clean <- na.omit(df_clean)
-
-# Standardizzare i dati
-df_standardized <- scale(df_clean)
-
-# Convertire la variabile target in binaria (1 se 'satisfied', altrimenti 0)
-# Sincronizzare il target con le righe rimaste dopo la pulizia
-target <- df$Satisfaction[rownames(df_clean)]
-target <- ifelse(target == 'satisfied', 1, 0)
-
-# Eseguire l'analisi fattoriale
-fa_result <- fa(df_standardized, nfactors = 5, rotate = "varimax")
-
-# Ottenere i loadings dei fattori
-loadings <- fa_result$loadings
-
-# Calcolare i punteggi dei fattori
-factor_scores <- as.data.frame(df_standardized %*% loadings)
-
-# Eseguire l'analisi di regressione
-regression_model <- lm(target ~ ., data = factor_scores, family = binomial)
-
-# Stampare i coefficienti di regressione
-coefficients <- summary(regression_model)$coefficients
-print(coefficients)
-
-# Creare un dataframe per visualizzare i nomi dei fattori e i loro coefficienti
-factor_names <- colnames(factor_scores)
-coefficients_df <- data.frame(Factor = factor_names, Coefficient = coefficients[2:6, "Estimate"])
-print(coefficients_df)
-
-# Creare un dataframe per i loadings dei fattori
-factor_loadings_df <- as.data.frame(loadings)
-colnames(factor_loadings_df) <- paste("Factor", 1:5, sep = " ")
-rownames(factor_loadings_df) <- colnames(df_clean)
-
-# Visualizzare i loadings dei fattori come una heatmap
-factor_loadings_melt <- melt(factor_loadings_df)
-ggplot(factor_loadings_melt, aes(Var2, Var1, fill = value)) +
-  geom_tile() +
-  geom_text(aes(label = round(value, 2)), color = "black") +
-  scale_fill_gradient2(low = "blue", high = "red", mid = "white", midpoint = 0) +
-  theme_minimal() +
-  labs(title = "Factor Loadings Heatmap", x = "Factors", y = "Variables")
-
-# Ottenere i valori eigen
-eigenvalues <- fa_result$e.values
-
-# Visualizzare i valori eigen come un grafico a barre
-eigen_df <- data.frame(Factor = paste("Factor", 1:length(eigenvalues), sep = " "), Eigenvalue = eigenvalues)
-ggplot(eigen_df, aes(Factor, Eigenvalue)) +
-  geom_bar(stat = "identity", fill = "steelblue") +
-  theme_minimal() +
-  labs(title = "Eigenvalues", x = "Factors", y = "Eigenvalue") +
-  theme(axis.text.x = element_text(angle = 90, hjust = 1))
-
-# Visualizzare la tabella dei loadings dei fattori
-print("Factor Loadings Table:")
-print(factor_loadings_df)
-
-```
-
-
-
-
 
 
