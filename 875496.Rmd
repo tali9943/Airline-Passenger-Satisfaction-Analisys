@@ -1254,11 +1254,35 @@ Returns all information for the classification usign the best threshold.
 ```{r}
 coords(AS_CTP_model_roc, x="best", ret="all")
 ```
-```{r}
-plot(allEffects(AS_CTP_model), ylab="probability of satisfaction", rescale.axis=FALSE,cex=0.7, las=1)  
+
+
+```{r, echo=FALSE}
+
+
+effect_gate <- Effect("Gate.Location", AS_CTP_model)
+effect_onboard <- Effect("On.board.Service", AS_CTP_model)
+effect_checkin <- Effect("Check.in.Service", AS_CTP_model)
+effect_Baggage <- Effect("Baggage.Handling", AS_CTP_model)
+effect_Boarding <- Effect("Online.Boarding", AS_CTP_model)
+
+effect_Customer.Type <- Effect("Customer.Type", AS_CTP_model)
+effect_Type.of.Travel <- Effect("Type.of.Travel", AS_CTP_model)
+effect_Boarding <- Effect("Class", AS_CTP_model)
+
+
+par(mfrow = c(1, 3))
+
+plot(effect_gate, main = "Gate.Location Effect")
+plot(effect_onboard, main = "On.board.Service Effect")
+plot(effect_checkin, main = "Check.in.Service Effect")
+plot(effect_Baggage, main = "Baggage.Handling Effect")
+plot(effect_Boarding, main = "Online.Boarding Effect")
+
+plot(effect_Customer.Type, main = "Customer.Type Effect")
+plot(effect_Type.of.Travel, main = "Type.of.Travel Effect")
+plot(effect_Boarding, main = "Class Effect")
 
 ```
-
 
 
 
@@ -1288,10 +1312,34 @@ Returns all information for the classification usign the best threshold.
 coords(AS_CC_model_roc, x="best", ret="all")
 ```
 
-```{r}
-plot(allEffects(AS_CC_model), ylab="probability of satisfaction", rescale.axis=FALSE,cex=0.7, las=1)  
+
+
+```{r, echo=FALSE}
+effect_gate <- Effect("Gate.Location", AS_CC_model)
+effect_onboard <- Effect("On.board.Service", AS_CC_model)
+effect_checkin <- Effect("Check.in.Service", AS_CC_model)
+effect_Baggage <- Effect("Baggage.Handling", AS_CC_model)
+effect_Boarding <- Effect("Online.Boarding", AS_CC_model)
+
+effect_Seat.Comfort <- Effect("Seat.Comfort", AS_CC_model)
+effect_Leg.Room.Service <- Effect("Leg.Room.Service", AS_CC_model)
+effect_Cleanliness <- Effect("Cleanliness", AS_CC_model)
+
+
+par(mfrow = c(1, 3))
+
+plot(effect_gate, main = "Gate.Location Effect")
+plot(effect_onboard, main = "On.board.Service Effect")
+plot(effect_checkin, main = "Check.in.Service Effect")
+plot(effect_Baggage, main = "Baggage.Handling Effect")
+plot(effect_Boarding, main = "Online.Boarding Effect")
+
+plot(effect_Seat.Comfort, main = "Seat.Comfort Effect")
+plot(effect_Leg.Room.Service, main = "Leg.Room.Service Effect")
+plot(effect_Cleanliness, main = "Cleanliness Effect")
 
 ```
+
 
 
 ### Airport Services + On-board Services
@@ -1319,8 +1367,35 @@ Returns all information for the classification usign the best threshold.
 coords(AS_OBS_model_roc, x="best", ret="all")
 ```
 
-```{r}
-plot(allEffects(AS_OBS_model), ylab="probability of satisfaction", rescale.axis=FALSE,cex=0.7, las=1)  
+
+
+```{r, echo=FALSE}
+effect_gate <- Effect("Gate.Location", AS_OBS_model)
+effect_onboard <- Effect("On.board.Service", AS_OBS_model)
+effect_checkin <- Effect("Check.in.Service", AS_OBS_model)
+effect_Baggage <- Effect("Baggage.Handling", AS_OBS_model)
+effect_Boarding <- Effect("Online.Boarding", AS_OBS_model)
+
+
+effect_Food.and.Drinkt <- Effect("Food.and.Drink", AS_OBS_model)
+effect_In.flight.Service <- Effect("In.flight.Service", AS_OBS_model)
+effect_In.flight.Wifi.Service <- Effect("In.flight.Wifi.Service", AS_OBS_model)
+effect_In.flight.Entertainment <- Effect("In.flight.Entertainment", AS_OBS_model)
+
+
+par(mfrow = c(1, 3))
+
+plot(effect_gate, main = "Gate.Location Effect")
+plot(effect_onboard, main = "On.board.Service Effect")
+plot(effect_checkin, main = "Check.in.Service Effect")
+plot(effect_Baggage, main = "Baggage.Handling Effect")
+plot(effect_Boarding, main = "Online.Boarding Effect")
+
+
+plot(effect_Food.and.Drinkt, main = "Food.and.Drink Effect")
+plot(effect_In.flight.Service, main = "In.flight.Service Effect")
+plot(effect_In.flight.Wifi.Service, main = "In.flight.Wifi.Service Effect")
+plot(effect_In.flight.Entertainment, main = "In.flight.Entertainment Effect")
 
 ```
 
@@ -1353,10 +1428,43 @@ Returns all information for the classification usign the best threshold.
 coords(AS_CTP_CC_model_roc, x="best", ret="all")
 ```
 
-```{r}
-plot(allEffects(AS_CTP_CC_model), ylab="probability of satisfaction", rescale.axis=FALSE,cex=0.7, las=1)  
+```{r, echo=FALSE}
+effect_gate <- Effect("Gate.Location", AS_CTP_CC_model)
+effect_onboard <- Effect("On.board.Service", AS_CTP_CC_model)
+effect_checkin <- Effect("Check.in.Service", AS_CTP_CC_model)
+effect_Baggage <- Effect("Baggage.Handling", AS_CTP_CC_model)
+effect_Boarding <- Effect("Online.Boarding", AS_CTP_CC_model)
+
+effect_Seat.Comfort <- Effect("Seat.Comfort", AS_CTP_CC_model)
+effect_Leg.Room.Service <- Effect("Leg.Room.Service", AS_CTP_CC_model)
+effect_Cleanliness <- Effect("Cleanliness", AS_CTP_CC_model)
+
+effect_Customer.Type <- Effect("Customer.Type", AS_CTP_CC_model)
+effect_Type.of.Travel <- Effect("Type.of.Travel", AS_CTP_CC_model)
+effect_Boarding <- Effect("Class", AS_CTP_CC_model)
+
+
+par(mfrow = c(1, 3))
+
+plot(effect_gate, main = "Gate.Location Effect")
+plot(effect_onboard, main = "On.board.Service Effect")
+plot(effect_checkin, main = "Check.in.Service Effect")
+plot(effect_Baggage, main = "Baggage.Handling Effect")
+plot(effect_Boarding, main = "Online.Boarding Effect")
+
+plot(effect_Seat.Comfort, main = "Seat.Comfort Effect")
+plot(effect_Leg.Room.Service, main = "Leg.Room.Service Effect")
+plot(effect_Cleanliness, main = "Cleanliness Effect")
+
+
+plot(effect_Customer.Type, main = "Customer.Type Effect")
+plot(effect_Type.of.Travel, main = "Type.of.Travel Effect")
+plot(effect_Boarding, main = "Class Effect")
 
 ```
+
+
+
 
 
 
@@ -1386,8 +1494,45 @@ coords(AS_CTP_OBS_model_roc, x="best", ret="all")
 ```
 
 
-```{r}
-plot(allEffects(AS_CTP_OBS_model), ylab="probability of satisfaction", rescale.axis=FALSE,cex=0.7, las=1)  
+```{r, echo=FALSE}
+effect_gate <- Effect("Gate.Location", AS_CTP_OBS_model)
+effect_onboard <- Effect("On.board.Service", AS_CTP_OBS_model)
+effect_checkin <- Effect("Check.in.Service", AS_CTP_OBS_model)
+effect_Baggage <- Effect("Baggage.Handling", AS_CTP_OBS_model)
+effect_Boarding <- Effect("Online.Boarding", AS_CTP_OBS_model)
+
+
+effect_Customer.Type <- Effect("Customer.Type", AS_CTP_OBS_model)
+effect_Type.of.Travel <- Effect("Type.of.Travel", AS_CTP_OBS_model)
+effect_Boarding <- Effect("Class", AS_CTP_OBS_model)
+
+effect_Food.and.Drinkt <- Effect("Food.and.Drink", AS_CTP_OBS_model)
+effect_In.flight.Service <- Effect("In.flight.Service", AS_CTP_OBS_model)
+effect_In.flight.Wifi.Service <- Effect("In.flight.Wifi.Service", AS_CTP_OBS_model)
+effect_In.flight.Entertainment <- Effect("In.flight.Entertainment", AS_CTP_OBS_model)
+
+
+
+par(mfrow = c(1, 3))
+
+plot(effect_gate, main = "Gate.Location Effect")
+plot(effect_onboard, main = "On.board.Service Effect")
+plot(effect_checkin, main = "Check.in.Service Effect")
+plot(effect_Baggage, main = "Baggage.Handling Effect")
+plot(effect_Boarding, main = "Online.Boarding Effect")
+
+
+plot(effect_Customer.Type, main = "Customer.Type Effect")
+plot(effect_Type.of.Travel, main = "Type.of.Travel Effect")
+plot(effect_Boarding, main = "Class Effect")
+
+
+
+plot(effect_Food.and.Drinkt, main = "Food.and.Drink Effect")
+plot(effect_In.flight.Service, main = "In.flight.Service Effect")
+plot(effect_In.flight.Wifi.Service, main = "In.flight.Wifi.Service Effect")
+plot(effect_In.flight.Entertainment, main = "In.flight.Entertainment Effect")
+
 
 ```
 
@@ -1397,30 +1542,76 @@ plot(allEffects(AS_CTP_OBS_model), ylab="probability of satisfaction", rescale.a
 ### Model with all best predictor
 
 ```{r}
-best_model <- glm(Satisfaction ~ Customer.Type + Type.of.Travel + Class + Gate.Location + On.board.Service + Baggage.Handling + Check.in.Service + Online.Boarding + Food.and.Drink + In.flight.Service + In.flight.Wifi.Service + In.flight.Entertainment + Seat.Comfort + Leg.Room.Service + Cleanliness, data = train, family = binomial)    
+complete_model <- glm(Satisfaction ~ Customer.Type + Type.of.Travel + Class + Gate.Location + On.board.Service + Baggage.Handling + Check.in.Service + Online.Boarding + Food.and.Drink + In.flight.Service + In.flight.Wifi.Service + In.flight.Entertainment + Seat.Comfort + Leg.Room.Service + Cleanliness, data = train, family = binomial)    
 
-summary(best_model)
+summary(complete_model)
 ```
 
 Below the execution of the test set with the current model:
 ```{r}
-best_model_probs <- predict(best_model, testX, type = "response")
+complete_model_probs <- predict(complete_model, testX, type = "response")
 
-best_model_roc <- roc(test$Satisfaction ~ best_model_probs, plot=TRUE, print.auc=TRUE)
+complete_model_roc <- roc(test$Satisfaction ~ complete_model_probs, plot=TRUE, print.auc=TRUE)
 ```
 
 Returns all information for the classification threshold of 0.5.
 ```{r}
-coords(best_model_roc, x=0.5, ret="all")
+coords(complete_model_roc, x=0.5, ret="all")
 ```
 
 Returns all information for the classification usign the best threshold.
 ```{r}
-coords(best_model_roc, x="best", ret="all")
+coords(complete_model_roc, x="best", ret="all")
 ```
 
-```{r}
-plot(allEffects(best_model), ylab="probability of satisfaction", rescale.axis=FALSE,cex=0.7, las=1)  
+```{r, echo=FALSE, collapse = TRUE}
+effect_gate <- Effect("Gate.Location", complete_model)
+effect_onboard <- Effect("On.board.Service", complete_model)
+effect_checkin <- Effect("Check.in.Service", complete_model)
+effect_Baggage <- Effect("Baggage.Handling", complete_model)
+effect_Boarding <- Effect("Online.Boarding", complete_model)
+
+
+effect_Seat.Comfort <- Effect("Seat.Comfort", complete_model)
+effect_Leg.Room.Service <- Effect("Leg.Room.Service", complete_model)
+effect_Cleanliness <- Effect("Cleanliness", complete_model)
+
+
+effect_Customer.Type <- Effect("Customer.Type", complete_model)
+effect_Type.of.Travel <- Effect("Type.of.Travel", complete_model)
+effect_Boarding <- Effect("Class", complete_model)
+
+
+effect_Food.and.Drinkt <- Effect("Food.and.Drink", complete_model)
+effect_In.flight.Service <- Effect("In.flight.Service", complete_model)
+effect_In.flight.Wifi.Service <- Effect("In.flight.Wifi.Service", complete_model)
+effect_In.flight.Entertainment <- Effect("In.flight.Entertainment", complete_model)
+
+
+
+par(mfrow = c(1, 3))
+
+plot(effect_gate, main = "Gate.Location Effect")
+plot(effect_onboard, main = "On.board.Service Effect")
+plot(effect_checkin, main = "Check.in.Service Effect")
+plot(effect_Baggage, main = "Baggage.Handling Effect")
+plot(effect_Boarding, main = "Online.Boarding Effect")
+
+
+plot(effect_Seat.Comfort, main = "Seat.Comfort Effect")
+plot(effect_Leg.Room.Service, main = "Leg.Room.Service Effect")
+plot(effect_Cleanliness, main = "Cleanliness Effect")
+
+
+plot(effect_Customer.Type, main = "Customer.Type Effect")
+plot(effect_Type.of.Travel, main = "Type.of.Travel Effect")
+plot(effect_Boarding, main = "Class Effect")
+
+
+plot(effect_Food.and.Drinkt, main = "Food.and.Drink Effect")
+plot(effect_In.flight.Service, main = "In.flight.Service Effect")
+plot(effect_In.flight.Wifi.Service, main = "In.flight.Wifi.Service Effect")
+plot(effect_In.flight.Entertainment, main = "In.flight.Entertainment Effect")
 
 ```
 
@@ -1440,20 +1631,20 @@ Here is an index to understand the table:
 
 * `AS_CTP_OBS_model`: Airport Services + Customer and Travel Type + On-board Services.
 
-* `Best_model`: Airport Services + Customer and Travel Type + Comfort and Cleanliness  + On-board Services.
+* `Complete_model`: Airport Services + Customer and Travel Type + Comfort and Cleanliness  + On-board Services.
 
 
 ```{r, echo = FALSE}
-library(knitr)
+
 model_data <- data.frame(
   Model = c("AS_CTP_model", 
             "TAS_CC_model", 
             "AS_OBS_models", 
             "AS_CTP_CC_model", 
             "AS_CTP_OBS_model", 
-            "best_model"),
-  AIC = c(AIC(AS_CTP_model), AIC(AS_CC_model), AIC(AS_OBS_model), AIC(AS_CTP_CC_model),AIC(AS_CTP_OBS_model),AIC(best_model)),
-  AUC = c(auc(AS_CTP_model_roc), auc(AS_CC_model_roc),auc(AS_OBS_model_roc),auc(AS_CTP_CC_model_roc),auc(AS_CTP_OBS_model_roc) ,auc(best_model_roc)),
+            "Complete_model"),
+  AIC = c(AIC(AS_CTP_model), AIC(AS_CC_model), AIC(AS_OBS_model), AIC(AS_CTP_CC_model),AIC(AS_CTP_OBS_model),AIC(complete_model)),
+  AUC = c(auc(AS_CTP_model_roc), auc(AS_CC_model_roc),auc(AS_OBS_model_roc),auc(AS_CTP_CC_model_roc),auc(AS_CTP_OBS_model_roc) ,auc(complete_model_roc)),
   `Threshold Accuracy 0.5` = c(0.858,0.806, 0.807, 0.866, 0.869, 0.872),
   `Best Threshold` = c(0.862, 0.806, 0.807, 0.866, 0.869,0.872),
   `N of predictors` = c(8,8,9,11,12,15),
@@ -1462,6 +1653,7 @@ model_data <- data.frame(
 
 
 print(model_data)
+
 ```
 
 By combining the previously created classes together, we can see how the results are improved compared to using a single class.
@@ -1676,12 +1868,82 @@ summary(lasso_log)
 
 
 
+# Ridge Model
+
+
+
+
+# LDA - Linear discriminant analysis
+
+```{r}
+best_model <- Satisfaction ~ Customer.Type + Type.of.Travel + Class + Gate.Location + On.board.Service + Baggage.Handling + Check.in.Service + Online.Boarding + Food.and.Drink + In.flight.Service + In.flight.Wifi.Service + In.flight.Entertainment + Seat.Comfort +  Leg.Room.Service + Cleanliness
+```
+
+```{r}
+lda_step <- lda(best_model, data = train)
+lda_step
+```
+
+
+```{r}
+lda_pred <- predict(lda_step, newdata=test)
+lda_pred_class <- lda_pred$class
+
+table(preds=lda_pred_class, true=testY1)
+```
+
+
+```{r}
+lda_roc<-roc(test$Satisfaction ~ lda_pred$posterior[,2], plot=TRUE, print.auc=TRUE)
+```
+
+
+
+```{r}
+coords(lda_roc,x=0.5, ret="all")
+```
+```{r}
+coords(lda_roc, x="best", ret="all")
+```
 
 
 
 
 
 
+# QDA - Quadratic discriminant analysis 
+
+```{r}
+qda_step <- qda(best_model, data = train)
+qda_step
+```
+
+```{r}
+qda_pred <- predict(qda_step, testX)
+qda_pred_class <- qda_pred$class
+table(preds=qda_pred_class, true=testY1)
+```
+
+
+```{r}
+qda_roc <- roc (test$Satisfaction ~ qda_pred$posterior[,2], plot=TRUE, print.auc=TRUE )
+```
+
+
+
+
+
+```{r}
+coords(qda_roc,x=0.5, ret="all")
+```
+
+```{r}
+coords(qda_roc, x="best", ret="all")
+```
+
+
+
+# Conclusions 
 
 
 
