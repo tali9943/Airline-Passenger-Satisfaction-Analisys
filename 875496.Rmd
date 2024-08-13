@@ -19,7 +19,7 @@ Loading of required libraries
 ```{r, message = FALSE}
 library(MASS)
 library(boot)
-#library(caret)
+library(caret)
 library(ggplot2)
 library(readr)
 library(dplyr)
@@ -1869,76 +1869,6 @@ summary(lasso_log)
 
 
 # Ridge Model
-
-
-
-```{r}
-ridge_model<-glmnet(Satisfaction ~ ., data=train, family = "binomial", alpha = 0)
-plot(ridge_model)
-```
-
-
-
-
-```{r}
-set.seed(1)
-cv.out <- cv.glmnet(Satisfaction ~ ., data=train,family = "binomial", alpha = 0, K=5)
-
-cv.out
-
-plot(cv.out)
-
-bestlam_ridge <- cv.out$lambda.min
-
-ridge_final <- glmnet(Satisfaction ~ .,  data=train , family = "binomial", alpha = 0, lambda = bestlam_ridge)
-```
-
-
-```{r}
-plot(ridge_model, xvar = "lambda") 
-abline(v = log(bestlam_ridge), lwd = 1.2, lty = "dashed")
-```
-
-
-The Ridge solution for the selected value of lambda is:
-```{r}
-coef(ridge_model, bestlam_ridge)
-```
-
-
-
-```{r}
-ridge_model_probs <- predict(ridge_model, s = bestlam_ridge, newdata=test, type="response")
-ridge_model_roc <- roc(test$Satisfaction ~ ridge_model_probs, plot=TRUE, print.auc=TRUE)
-```
-
-
-
-
-
-
-
-
-
-```{r}
-coefficients <- coef(ridge_model)
-print(coefficients)
-```
-
-
-```{r}
-# Convertire i coefficienti in un data frame per una facile manipolazione
-coeff_df <- as.data.frame(as.matrix(coefficients))
-colnames(coeff_df) <- "Coefficient"
-coeff_df$Variable <- rownames(coeff_df)
-coeff_df <- coeff_df[order(abs(coeff_df$Coefficient), decreasing = TRUE), ]
-
-# Visualizzare le prime variabili più influenti
-print(head(coeff_df, 15))
-
-```
-
-
 
 
 
