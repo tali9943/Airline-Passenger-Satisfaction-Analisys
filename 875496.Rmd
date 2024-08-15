@@ -17,6 +17,8 @@ knitr::opts_chunk$set(echo = TRUE)
 
 Loading of required libraries
 ```{r, message = FALSE}
+
+
 library(MASS)
 library(boot)
 library(caret)
@@ -29,8 +31,8 @@ library(summarytools)
 library(glmnetUtils)
 library(pROC)
 library(car)
-library(corrplot)
 library(GGally)
+library(pls)
 
 ```
 
@@ -213,8 +215,6 @@ partition_data <- function(data, target_var, train_ratio = 0.8, seed = NULL) {
 ```{r}
 split <- partition_data(data, target_var = "Satisfaction", train_ratio = 0.8, seed = 123)
 
-
-
 dim(split$trainX)
 dim(split$testX)
 
@@ -232,26 +232,45 @@ testX <- test[, -which(names(test) == "Satisfaction")]
 
 
 # Analysis of data
+
 In this section, I analyse the characteristics of the dataset to find the most important features for calculating the satisfaction.
 
 
 
 
 ## Correlation matrix
+
 I transform the categorical variables of the dataframe into dummy variables, calculate the correlation matrix of the transformed variables and then display this correlation matrix.
 Categorical variables are transformed into dummy variables, where each unique category becomes a new column with values 0 or 1.
 
 ```{r, echo = FALSE}
 
+library(corrplot)
+
 train_dummy <- model.matrix( ~ . - 1, data=data)
 
 cor_matrix <- cor(train_dummy)
 
-corrplot(cor_matrix, method="color", type="upper", tl.cex=0.6, tl.col="black")
+
+corrplot(cor_matrix, method = "color", type = "upper", tl.cex = 0.6, tl.col = "black")
+
+
+```
+```{r, echo = FALSE, eval=FALSE}
+
+library(magick)
+
+
+img <- image_read("Images/correlation_matrix_200.png")
+
+
+plot(img)
 
 
 ```
 
+
+All categorial varibles are composed of two results, so they are converted with 0 or 1. The Class category, on the other hand, is divided into 2 categories as it is composed of 3 possible results.
 
 We can analyse the table by interpreting the values approaching blue as positive classes, i.e. improving customer satisfaction, and in red all the categories that can make a passenger dissatisfied.
 
@@ -379,7 +398,7 @@ What I will do in the next chapters is to create simpler models using fewer pred
 
 
 
-# Features selection  with Categorical Classes
+# Features selection  
 
 After a thorough analysis, I merged the categories of the dataset into different classes in order to perform a more precise feature selection. 
 Each set groups the most similar categories. This grouping was done in order to interpret the categories more easily.
@@ -400,7 +419,7 @@ Here are the following classes:
 
 * `Demographic variables`: Age.
 
-The first objective is to see which set of services leads to a better prediction of passenger satisfaction.
+
 
 The first objective is to see which set of services leads to a better prediction of passenger satisfaction. Using all predictors certainly leads to a very good result, but by using precise categories, is it still possible to understand whether customers are satisfied or dissatisfied?
 
@@ -411,7 +430,7 @@ Finally, for each model, I run a test with two different threshold values: 0.5 a
 At the end of the chapter there is a summary table with all the results.
 
 
-### Customer and Travel Type Model
+## Customer and Travel Type Model
 
 This model analyses the type of passenger, the class used and the type of journey (whether business or holiday).
 
@@ -505,73 +524,13 @@ c(lo3, up3)
 ```
 What can be seen remains in line with the plot seen above. The probability of satisfaction of a person in business class is high. If moved to Economy plus it decreases dramatically and if moved to economy it increases slightly compared to the previous class but still the probability of being satisfied is low.
 
-```{r, echo=FALSE}
-# Business class with Business travel type
-business_business <- subset(train, Class == "Business" & `Type.of.Travel` == "Business")
-
-count_business_business <- nrow(business_business)
-satisfied_business_business <- sum(business_business$Satisfaction == "1")
-not_satisfied_business_business <- sum(business_business$Satisfaction == "0")
-
-cat("Number of people traveling in Business class with Business travel type:\n")
-cat("Total:", count_business_business, "\n")
-cat("Satisfied:", satisfied_business_business, "\n")
-cat("Not satisfied:", not_satisfied_business_business, "\n\n")
-
-# Economy class with Personal travel type
-economy_personal <- subset(data, Class == "Economy" & `Type.of.Travel` == "Personal")
-
-count_economy_personal <- nrow(economy_personal)
-satisfied_economy_personal <- sum(economy_personal$Satisfaction == "1")
-not_satisfied_economy_personal <- sum(economy_personal$Satisfaction == "0")
-
-cat("Number of people traveling in Economy class with Personal travel type:\n")
-cat("Total:", count_economy_personal, "\n")
-cat("Satisfied:", satisfied_economy_personal, "\n")
-cat("Not satisfied:", not_satisfied_economy_personal, "\n\n")
-
-# Business class with Personal travel type
-business_personal <- subset(train, Class == "Business" & `Type.of.Travel` == "Personal")
-
-count_business_personal <- nrow(business_personal)
-satisfied_business_personal <- sum(business_personal$Satisfaction == "1")
-not_satisfied_business_personal <- sum(business_personal$Satisfaction == "0")
-
-cat("Number of people traveling in Business class with Personal travel type:\n")
-cat("Total:", count_business_personal, "\n")
-cat("Satisfied:", satisfied_business_personal, "\n")
-cat("Not satisfied:", not_satisfied_business_personal, "\n\n")
-
-# Economy class with Business travel type
-economy_business <- subset(data, Class == "Economy" & `Type.of.Travel` == "Business")
-
-count_economy_business <- nrow(economy_business)
-satisfied_economy_business <- sum(economy_business$Satisfaction == "1")
-not_satisfied_economy_business <- sum(economy_business$Satisfaction == "0")
-
-cat("Number of people traveling in Economy class with Business travel type:\n")
-cat("Total:", count_economy_business, "\n")
-cat("Satisfied:", satisfied_economy_business, "\n")
-cat("Not satisfied:", not_satisfied_economy_business, "\n")
-
-```
-
 We can conclude that this model is the only one that uses categorical variables and as can be seen above changing from a higher to a lower class decreases the probability of being satisfied. We can also note that satisfaction is affected by the type of travel. Travelling business class for business is more satisfying than travelling in the same class for personal purposes.
 Travelling economy class, on the other hand, is not satisfying in most cases.
 
 
 
 
-
-
-
-
-
-
-
-
-
-### Time and Distance Model
+## Time and Distance Model
 
 This model calculates passenger satisfaction conditioned by flight distance and possible delays.
 
@@ -649,7 +608,7 @@ An increase in the delay of a flight decreases the probability of being satisfie
 
 
 
-### Convenience and Booking Services Model
+## Convenience and Booking Services Model
 
 This model calculates passenger satisfaction based on ease of buying travel and choice of departure and arrival times.
 
@@ -725,7 +684,7 @@ lo2 <- i2$fit - qnorm(0.975) * i2$se
 up2 <- i2$fit + qnorm(0.975) * i2$se
 c(lo2, up2)
 ```
-Ease.of.Online.Booking
+
 ```{r}
 test12$Ease.of.Online.Booking<-5
 pred3.probs <- predict(Convenience_and_Booking_Services_model, test12, type = "response")
@@ -749,7 +708,7 @@ Here again we can see how increasing or decreasing the values leads to a change 
 
 
 
-### On-board Services Model  
+## On-board Services Model  
 
 This model calculates passenger satisfaction based on the services offered on board the aircraft.
 
@@ -859,7 +818,7 @@ Also, although strange, we can see that as the quality of food and drink increas
 
 
 
-### Comfort and Cleanliness Model  
+## Comfort and Cleanliness Model  
 
 This model calculates passenger satisfaction based on the comfort and cleanliness of the aircraft.
 
@@ -971,7 +930,7 @@ The trend of the variables is very similar, as the rating increases, the likelih
 
 
 
-### Airport Services Model 
+## Airport Services Model 
 
 This model calculates passenger satisfaction based on the services offered by the airport.
 
@@ -1081,7 +1040,7 @@ Excluding Gate location, which does not bring major changes, all other variables
 
 
 
-### Demographic variables Model
+## Demographic variables Model
 
 This model calculates passenger satisfaction according to age.
 
@@ -1166,7 +1125,10 @@ c(lo2, up2)
 The results show that increasing age can lead to better passenger satisfaction.
 
 
-## Summary of results of the first method
+
+
+## Summary of results 
+
 
 Below is a table summarising all the results of previous models:
 ```{r, echo = FALSE}
@@ -1204,7 +1166,7 @@ From the table, we can see that other categories are valid for evaluating custom
 Several categories can therefore influence customer satisfaction.
 
 An initial analysis shows that the services offered by the airport, the services offered on board, comfort, cleanliness and travel type are the categories that most influence customer satisfaction.
-Common denominator of the four models is that we use a minimum of 3 predictors.
+
 
 For each model, we performed an inference to see how, as the value of a predictor changes, the probability of achieving customer satisfaction also changes.
 Some variables lead to a high increase in probability, some others slightly change the results.
@@ -1225,49 +1187,49 @@ Now I will focus on the following classes:
 
 
 
-## Combination models
+# Combination models
 
 We are now going to combine the previous models.
 
 
-### Airport Services + Customer and Travel Type
+## Airport Services + Customer and Travel Type
 
 Let's combine the two models with the best results using 8 predictor in total.
 
 ```{r}
-AS_CTP_model <- glm(Satisfaction ~ Gate.Location + On.board.Service + Baggage.Handling + Check.in.Service + Online.Boarding + Customer.Type + Type.of.Travel + Class , data = train, family = binomial)    
+AS_CTT_model <- glm(Satisfaction ~ Gate.Location + On.board.Service + Baggage.Handling + Check.in.Service + Online.Boarding + Customer.Type + Type.of.Travel + Class , data = train, family = binomial)    
 
-summary(AS_CTP_model)
+summary(AS_CTT_model)
 ```
 
 Below the execution of the test set with the current model:
 ```{r}
-AS_CTP_model_probs <- predict(AS_CTP_model, testX, type = "response")
+AS_CTT_model_probs <- predict(AS_CTT_model, testX, type = "response")
 
-AS_CTP_model_roc <- roc(test$Satisfaction ~ AS_CTP_model_probs, plot=TRUE, print.auc=TRUE)
+AS_CTT_model_roc <- roc(test$Satisfaction ~ AS_CTT_model_probs, plot=TRUE, print.auc=TRUE)
 ```
 Returns all information for the classification threshold of 0.5.
 ```{r}
-coords(AS_CTP_model_roc, x=0.5, ret="all")
+coords(AS_CTT_model_roc, x=0.5, ret="all")
 ```
 Returns all information for the classification usign the best threshold.
 ```{r}
-coords(AS_CTP_model_roc, x="best", ret="all")
+coords(AS_CTT_model_roc, x="best", ret="all")
 ```
 
 
 ```{r, echo=FALSE}
 
 
-effect_gate <- Effect("Gate.Location", AS_CTP_model)
-effect_onboard <- Effect("On.board.Service", AS_CTP_model)
-effect_checkin <- Effect("Check.in.Service", AS_CTP_model)
-effect_Baggage <- Effect("Baggage.Handling", AS_CTP_model)
-effect_Boarding <- Effect("Online.Boarding", AS_CTP_model)
+effect_gate <- Effect("Gate.Location", AS_CTT_model)
+effect_onboard <- Effect("On.board.Service", AS_CTT_model)
+effect_checkin <- Effect("Check.in.Service", AS_CTT_model)
+effect_Baggage <- Effect("Baggage.Handling", AS_CTT_model)
+effect_Boarding <- Effect("Online.Boarding", AS_CTT_model)
 
-effect_Customer.Type <- Effect("Customer.Type", AS_CTP_model)
-effect_Type.of.Travel <- Effect("Type.of.Travel", AS_CTP_model)
-effect_Boarding <- Effect("Class", AS_CTP_model)
+effect_Customer.Type <- Effect("Customer.Type", AS_CTT_model)
+effect_Type.of.Travel <- Effect("Type.of.Travel", AS_CTT_model)
+effect_Boarding <- Effect("Class", AS_CTT_model)
 
 
 par(mfrow = c(1, 3))
@@ -1287,7 +1249,7 @@ plot(effect_Boarding, main = "Class Effect")
 
 
 
-### Airport Services + Comfort and Cleanliness
+## Airport Services + Comfort and Cleanliness
 
 ```{r}
 AS_CC_model <- glm(Satisfaction ~  Gate.Location + On.board.Service + Baggage.Handling + Check.in.Service + Online.Boarding + Seat.Comfort + Leg.Room.Service + Cleanliness , data = train, family = binomial)    
@@ -1342,7 +1304,7 @@ plot(effect_Cleanliness, main = "Cleanliness Effect")
 
 
 
-### Airport Services + On-board Services
+## Airport Services + On-board Services
 
 ```{r}
 AS_OBS_model <- glm(Satisfaction ~  Gate.Location + On.board.Service + Baggage.Handling + Check.in.Service + Online.Boarding + Food.and.Drink + In.flight.Service + In.flight.Wifi.Service + In.flight.Entertainment , data = train, family = binomial)    
@@ -1403,45 +1365,45 @@ plot(effect_In.flight.Entertainment, main = "In.flight.Entertainment Effect")
 
 
 
-### Airport Services + Customer and Travel Type + Comfort and Cleanliness
+## Airport Services + Customer and Travel Type + Comfort and Cleanliness
 
 Let's combine the two models with the best results using 8 predictor in total.
 
 ```{r}
-AS_CTP_CC_model <- glm(Satisfaction ~  Gate.Location + On.board.Service + Baggage.Handling + Check.in.Service + Online.Boarding + Customer.Type + Type.of.Travel + Class + Seat.Comfort + Leg.Room.Service + Cleanliness, data = train, family = binomial)    
+AS_CTT_CC_model <- glm(Satisfaction ~  Gate.Location + On.board.Service + Baggage.Handling + Check.in.Service + Online.Boarding + Customer.Type + Type.of.Travel + Class + Seat.Comfort + Leg.Room.Service + Cleanliness, data = train, family = binomial)    
 
-summary(AS_CTP_CC_model)
+summary(AS_CTT_CC_model)
 ```
 
 Below the execution of the test set with the current model:
 ```{r}
-AS_CTP_CC_model_probs <- predict(AS_CTP_CC_model, testX, type = "response")
+AS_CTT_CC_model_probs <- predict(AS_CTT_CC_model, testX, type = "response")
 
-AS_CTP_CC_model_roc <- roc(test$Satisfaction ~ AS_CTP_CC_model_probs, plot=TRUE, print.auc=TRUE)
+AS_CTT_CC_model_roc <- roc(test$Satisfaction ~ AS_CTT_CC_model_probs, plot=TRUE, print.auc=TRUE)
 ```
 Returns all information for the classification threshold of 0.5.
 ```{r}
-coords(AS_CTP_CC_model_roc, x=0.5, ret="all")
+coords(AS_CTT_CC_model_roc, x=0.5, ret="all")
 ```
 Returns all information for the classification usign the best threshold.
 ```{r}
-coords(AS_CTP_CC_model_roc, x="best", ret="all")
+coords(AS_CTT_CC_model_roc, x="best", ret="all")
 ```
 
 ```{r, echo=FALSE}
-effect_gate <- Effect("Gate.Location", AS_CTP_CC_model)
-effect_onboard <- Effect("On.board.Service", AS_CTP_CC_model)
-effect_checkin <- Effect("Check.in.Service", AS_CTP_CC_model)
-effect_Baggage <- Effect("Baggage.Handling", AS_CTP_CC_model)
-effect_Boarding <- Effect("Online.Boarding", AS_CTP_CC_model)
+effect_gate <- Effect("Gate.Location", AS_CTT_CC_model)
+effect_onboard <- Effect("On.board.Service", AS_CTT_CC_model)
+effect_checkin <- Effect("Check.in.Service", AS_CTT_CC_model)
+effect_Baggage <- Effect("Baggage.Handling", AS_CTT_CC_model)
+effect_Boarding <- Effect("Online.Boarding", AS_CTT_CC_model)
 
-effect_Seat.Comfort <- Effect("Seat.Comfort", AS_CTP_CC_model)
-effect_Leg.Room.Service <- Effect("Leg.Room.Service", AS_CTP_CC_model)
-effect_Cleanliness <- Effect("Cleanliness", AS_CTP_CC_model)
+effect_Seat.Comfort <- Effect("Seat.Comfort", AS_CTT_CC_model)
+effect_Leg.Room.Service <- Effect("Leg.Room.Service", AS_CTT_CC_model)
+effect_Cleanliness <- Effect("Cleanliness", AS_CTT_CC_model)
 
-effect_Customer.Type <- Effect("Customer.Type", AS_CTP_CC_model)
-effect_Type.of.Travel <- Effect("Type.of.Travel", AS_CTP_CC_model)
-effect_Boarding <- Effect("Class", AS_CTP_CC_model)
+effect_Customer.Type <- Effect("Customer.Type", AS_CTT_CC_model)
+effect_Type.of.Travel <- Effect("Type.of.Travel", AS_CTT_CC_model)
+effect_Boarding <- Effect("Class", AS_CTT_CC_model)
 
 
 par(mfrow = c(1, 3))
@@ -1468,48 +1430,48 @@ plot(effect_Boarding, main = "Class Effect")
 
 
 
-### Airport Services + Customer and Travel Type + On-board Services 
+## Airport Services + Customer and Travel Type + On-board Services 
 
 Let's combine the two models with the best results using 8 predictor in total.
 
 ```{r}
-AS_CTP_OBS_model <- glm(Satisfaction ~Gate.Location + On.board.Service + Baggage.Handling + Check.in.Service + Online.Boarding+ Customer.Type + Type.of.Travel + Class + Food.and.Drink + In.flight.Service + In.flight.Wifi.Service + In.flight.Entertainment , data = train, family = binomial)    
+AS_CTT_OBS_model <- glm(Satisfaction ~Gate.Location + On.board.Service + Baggage.Handling + Check.in.Service + Online.Boarding+ Customer.Type + Type.of.Travel + Class + Food.and.Drink + In.flight.Service + In.flight.Wifi.Service + In.flight.Entertainment , data = train, family = binomial)    
 
-summary(AS_CTP_OBS_model)
+summary(AS_CTT_OBS_model)
 ```
 
 Below the execution of the test set with the current model:
 ```{r}
-AS_CTP_OBS_model_probs <- predict(AS_CTP_OBS_model, testX, type = "response")
+AS_CTT_OBS_model_probs <- predict(AS_CTT_OBS_model, testX, type = "response")
 
-AS_CTP_OBS_model_roc <- roc(test$Satisfaction ~ AS_CTP_OBS_model_probs, plot=TRUE, print.auc=TRUE)
+AS_CTT_OBS_model_roc <- roc(test$Satisfaction ~ AS_CTT_OBS_model_probs, plot=TRUE, print.auc=TRUE)
 ```
 Returns all information for the classification threshold of 0.5.
 ```{r}
-coords(AS_CTP_OBS_model_roc, x=0.5, ret="all")
+coords(AS_CTT_OBS_model_roc, x=0.5, ret="all")
 ```
 Returns all information for the classification usign the best threshold.
 ```{r}
-coords(AS_CTP_OBS_model_roc, x="best", ret="all")
+coords(AS_CTT_OBS_model_roc, x="best", ret="all")
 ```
 
 
 ```{r, echo=FALSE}
-effect_gate <- Effect("Gate.Location", AS_CTP_OBS_model)
-effect_onboard <- Effect("On.board.Service", AS_CTP_OBS_model)
-effect_checkin <- Effect("Check.in.Service", AS_CTP_OBS_model)
-effect_Baggage <- Effect("Baggage.Handling", AS_CTP_OBS_model)
-effect_Boarding <- Effect("Online.Boarding", AS_CTP_OBS_model)
+effect_gate <- Effect("Gate.Location", AS_CTT_OBS_model)
+effect_onboard <- Effect("On.board.Service", AS_CTT_OBS_model)
+effect_checkin <- Effect("Check.in.Service", AS_CTT_OBS_model)
+effect_Baggage <- Effect("Baggage.Handling", AS_CTT_OBS_model)
+effect_Boarding <- Effect("Online.Boarding", AS_CTT_OBS_model)
 
 
-effect_Customer.Type <- Effect("Customer.Type", AS_CTP_OBS_model)
-effect_Type.of.Travel <- Effect("Type.of.Travel", AS_CTP_OBS_model)
-effect_Boarding <- Effect("Class", AS_CTP_OBS_model)
+effect_Customer.Type <- Effect("Customer.Type", AS_CTT_OBS_model)
+effect_Type.of.Travel <- Effect("Type.of.Travel", AS_CTT_OBS_model)
+effect_Boarding <- Effect("Class", AS_CTT_OBS_model)
 
-effect_Food.and.Drinkt <- Effect("Food.and.Drink", AS_CTP_OBS_model)
-effect_In.flight.Service <- Effect("In.flight.Service", AS_CTP_OBS_model)
-effect_In.flight.Wifi.Service <- Effect("In.flight.Wifi.Service", AS_CTP_OBS_model)
-effect_In.flight.Entertainment <- Effect("In.flight.Entertainment", AS_CTP_OBS_model)
+effect_Food.and.Drinkt <- Effect("Food.and.Drink", AS_CTT_OBS_model)
+effect_In.flight.Service <- Effect("In.flight.Service", AS_CTT_OBS_model)
+effect_In.flight.Wifi.Service <- Effect("In.flight.Wifi.Service", AS_CTT_OBS_model)
+effect_In.flight.Entertainment <- Effect("In.flight.Entertainment", AS_CTT_OBS_model)
 
 
 
@@ -1539,7 +1501,7 @@ plot(effect_In.flight.Entertainment, main = "In.flight.Entertainment Effect")
 
 
 
-### Model with all best predictor
+## Model with all best predictor
 
 ```{r}
 complete_model <- glm(Satisfaction ~ Customer.Type + Type.of.Travel + Class + Gate.Location + On.board.Service + Baggage.Handling + Check.in.Service + Online.Boarding + Food.and.Drink + In.flight.Service + In.flight.Wifi.Service + In.flight.Entertainment + Seat.Comfort + Leg.Room.Service + Cleanliness, data = train, family = binomial)    
@@ -1621,15 +1583,15 @@ plot(effect_In.flight.Entertainment, main = "In.flight.Entertainment Effect")
 Below we can analyse the results obtained by merging the previous models.
 Here is an index to understand the table:
 
-* `AS_CTP_model`: Airport Services + Customer and Travel Type.
+* `AS_CTT_model`: Airport Services + Customer and Travel Type.
 
 * `AS_CC_model`:  Airport Services + Comfort and Cleanliness.
 
 * `AS_OBS_models`: Airport Services + On-board Services.
 
-* `AS_CTP_CC_model`: Airport Services + Customer and Travel Type + Comfort and Cleanliness.
+* `AS_CTT_CC_model`: Airport Services + Customer and Travel Type + Comfort and Cleanliness.
 
-* `AS_CTP_OBS_model`: Airport Services + Customer and Travel Type + On-board Services.
+* `AS_CTT_OBS_model`: Airport Services + Customer and Travel Type + On-board Services.
 
 * `Complete_model`: Airport Services + Customer and Travel Type + Comfort and Cleanliness  + On-board Services.
 
@@ -1637,14 +1599,14 @@ Here is an index to understand the table:
 ```{r, echo = FALSE}
 
 model_data <- data.frame(
-  Model = c("AS_CTP_model", 
+  Model = c("AS_CTT_model", 
             "TAS_CC_model", 
             "AS_OBS_models", 
-            "AS_CTP_CC_model", 
-            "AS_CTP_OBS_model", 
+            "AS_CTT_CC_model", 
+            "AS_CTT_OBS_model", 
             "Complete_model"),
-  AIC = c(AIC(AS_CTP_model), AIC(AS_CC_model), AIC(AS_OBS_model), AIC(AS_CTP_CC_model),AIC(AS_CTP_OBS_model),AIC(complete_model)),
-  AUC = c(auc(AS_CTP_model_roc), auc(AS_CC_model_roc),auc(AS_OBS_model_roc),auc(AS_CTP_CC_model_roc),auc(AS_CTP_OBS_model_roc) ,auc(complete_model_roc)),
+  AIC = c(AIC(AS_CTT_model), AIC(AS_CC_model), AIC(AS_OBS_model), AIC(AS_CTT_CC_model),AIC(AS_CTT_OBS_model),AIC(complete_model)),
+  AUC = c(auc(AS_CTT_model_roc), auc(AS_CC_model_roc),auc(AS_OBS_model_roc),auc(AS_CTT_CC_model_roc),auc(AS_CTT_OBS_model_roc) ,auc(complete_model_roc)),
   `Threshold Accuracy 0.5` = c(0.858,0.806, 0.807, 0.866, 0.869, 0.872),
   `Best Threshold` = c(0.862, 0.806, 0.807, 0.866, 0.869,0.872),
   `N of predictors` = c(8,8,9,11,12,15),
@@ -1665,7 +1627,56 @@ Choosing business class leads to an increase in services and comfort on board an
 
 
 
+```{r, echo = FALSE, warning = FALSE}
 
+models_single <- data.frame(
+  Model = c("Customer and Travel Type", "Time and Distance", "Convenience and Booking Services", 
+            "On-board Services", "Comfort and Cleanliness", "Airport Services", "Demographic variables"),
+  AIC = c(AIC(Customer_and_Travel_Type_model), AIC(Time_and_Distance_model), AIC(Convenience_and_Booking_Services_model), AIC(On_board_Services_model), AIC(Comfort_and_Cleanliness_model), AIC(Airport_Services_model), AIC(Demographic_variables_model)),
+  AUC = c(auc(Customer_and_Travel_Type_model_roc), auc(Time_and_Distance_model_roc), auc(Convenience_and_Booking_Services_model_roc),auc(On_board_Services_model_model_roc), auc(Comfort_and_Cleanliness_model_roc), auc(Airport_Services_model_roc), auc(Demographic_variables_model_roc))
+)
+
+models_combined <- data.frame(
+  Model = c("AS_CTT_model", "TAS_CC_model", "AS_OBS_models", 
+            "AS_CTT_CC_model", "AS_CTT_OBS_model", "Complete_model"),
+  AIC = c(AIC(AS_CTT_model), AIC(AS_CC_model), AIC(AS_OBS_model), AIC(AS_CTT_CC_model),AIC(AS_CTT_OBS_model),AIC(complete_model)),
+  AUC = c(auc(AS_CTT_model_roc), auc(AS_CC_model_roc),auc(AS_OBS_model_roc),auc(AS_CTT_CC_model_roc),auc(AS_CTT_OBS_model_roc) ,auc(complete_model_roc))
+)
+
+models_single$Type <- "Single"
+models_combined$Type <- "Combined"
+
+data_to_plot <- rbind(models_single, models_combined)
+
+data_to_plot$Model <- factor(data_to_plot$Model, 
+                             levels = data_to_plot$Model[order(data_to_plot$AUC, -data_to_plot$AIC)])
+
+
+p1 <- ggplot(data_to_plot, aes(x = Model, y = AIC, group = Type, color = Type)) +
+  geom_bar(stat = "identity", aes(fill = Type), position = position_dodge(width = 0.8)) +
+  geom_line(aes(y = AIC, group = 1), color = "black", size = 1) +
+  geom_point(aes(y = AIC), color = "black", size = 2) +
+  labs(title = "AIC Comparison between Single and Combined Models", x = "Model", y = "AIC") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+p2 <- ggplot(data_to_plot, aes(x = Model, y = AUC, group = Type, color = Type)) +
+  geom_bar(stat = "identity", aes(fill = Type), position = position_dodge(width = 0.8)) +
+  geom_line(aes(y = AUC, group = 1), color = "black", size = 1) +
+  geom_point(aes(y = AUC), color = "black", size = 2) +
+  labs(title = "AUC Comparison between Single and Combined Models", x = "Model", y = "AUC") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+print(p1)
+print(p2)
+
+
+```
+
+Here we can see how the results of the models improve by combining the individual models together.
+For the AIC, we see that combining the models decreases the value of the AIC. The best model is the one that combines the individual models.
+For the auc on the other hand we can see the same improvement, the combination of the models leads to an increase in the final value and thus to a better result for the final prediction.
+
+Final conclusions will be included in the final chapter.
 
 
 
@@ -1796,12 +1807,31 @@ These results do not indicate that the best solution is the one obtained. As we 
 
 
 
+# Shrinkage Methods
+
+Shrinkage methods are widely used in statistical modelling to reduce overfitting and improve model performance, especially when dealing with a large number of predictors. These methods work by applying a regularisation technique to reduce coefficient estimates towards zero.
+
+Bias: when the model is too simple, it can under-fit the data, causing a high bias. Narrowing the coefficients towards zero increases the bias.
+Variance: When the model is too complex, it can over-fit the data, capturing noise and irrelevant patterns, resulting in high variance. Reducing the coefficients reduces variance by discouraging complex models with high coefficients.
+The goal is to find the optimal balance between bias and variance that minimises the mean square error. The mean square error is the sum of the squared differences between observed and predicted values.
+
+The most common shrinkage methods:
+
+* ridge regression
+
+* lasso
+
+Ridge regression adds a penalty to the sum of the squared coefficients (L2 penalty). It reduces the coefficients but never completely zeroes them, which means that all predictors are retained in the model.
+
+Lasso adds a penalty to the sum of the absolute values of the coefficients (penalty L1). In contrast to the ridge regression, Lasso can reduce some coefficients to exactly zero, effectively making a selection of variables by excluding unimportant predictors.
 
 
 
-# Lasso model
 
+## Lasso model
 
+We use Lasso to evaluate the best parameters. We use cross validation to calculate the best lambda value to be used in the model.
+The Lasso model is based on calculating the sum of the absolute values of the coefficients.
 
 
 ```{r}
@@ -1834,7 +1864,33 @@ The Lasso solution for the selected value of lambda is:
 coef(lasso_model, bestlam.lasso)
 ```
 
+These results show us which are the best predictors according to Lasso. We have 3 types of results: 
 
+* Positive values: they influence improving the final prediction.
+* Negative values: affect worsening the final prediction.
+* Neutral values: do not affect the final result.
+
+The most important predictors to be selected, considering the coefficients with the highest absolute values, are:
+
+* Customer.TypeReturning (significant positive influence)
+
+* Type.of.TravelBusiness (positive influence)
+
+* Cleanliness (positive influence)
+
+* In.flight.Wifi.Service (positive influence)
+
+* Baggage.Handling (positive influence)
+
+* Type.of.TravelPersonal (significant negative influence)
+
+* Leg.Room.Service (negative influence)
+
+* On.board.Service (negative influence)
+
+* Food.and.Drink (negative influence)
+
+These predictors are the most influential and should be prioritised when building a model or in further analyses.
 
 
 ```{r}
@@ -1859,21 +1915,146 @@ coords(lasso_model_roc, x="best", ret="all")
 We can also try to fit a logistic regression model choosing the predictors suggested by Lasso.
 
 ```{r}
-lasso_log <- glm(Satisfaction ~ Age +Customer.Type + Type.of.Travel + Class + Flight.Distance + Delay + Departure.and.Arrival.Time.Convenience + Ease.of.Online.Booking + Check.in.Service + Online.Boarding + Gate.Location + On.board.Service + Seat.Comfort + Leg.Room.Service + Cleanliness +
- Food.and.Drink + In.flight.Service + In.flight.Wifi.Service + In.flight.Entertainment + Baggage.Handling  , data = train, family = binomial)
-summary(lasso_log)
+lasso_regression_model <- glm(Satisfaction ~ Customer.Type + Type.of.Travel + Cleanliness + In.flight.Wifi.Service + Baggage.Handling + Leg.Room.Service + On.board.Service + Food.and.Drink , data = train, family = binomial)
+summary(lasso_regression_model)
+```
+
+From this model we can see that the best predictors belong to four specific classes: Customer and Travel Type, Comfort and Cleanliness, Airport Services and On-board services.
+
+
+
+
+## Ridge Model
+
+
+I will now implement the ridge model to evaluate the best predictors. I will use cross validation to find the best lambda value. The procedure is very similar to the lasso model but we change the value of alpha from 1 to zero. 
+Ridge is based on calculating the sum of the squares of the coefficients.
+
+```{r}
+ridge_model<-glmnet(Satisfaction ~ ., data=train, family = "binomial", alpha = 0)
+plot(ridge_model)
+```
+
+
+
+```{r}
+set.seed(1)
+cv.out <- cv.glmnet(Satisfaction ~ ., data=train,family = "binomial", alpha = 0, K=5)
+```
+
+
+```{r}
+cv.out
+
+plot(cv.out)
+
+bestlam_ridge <- cv.out$lambda.min
+
+ridge_final <- glmnet(Satisfaction ~ .,  data=train , family = "binomial", alpha = 0, lambda = bestlam_ridge)
+
+```
+
+
+```{r}
+plot(ridge_model, xvar = "lambda") 
+abline(v = log(bestlam_ridge), lwd = 1.2, lty = "dashed")
+```
+Ridge regression does not select a subset of predictors.
+Ridge regression includes all predictors p but all coefficients shrink towards zero.
+The idea is that reducing the coefficients reduces the complexity of the model and reduces the risk of overfitting, but without completely eliminating any variables.
+
+
+
+The Ridge solution for the selected value of lambda is:
+```{r}
+coef(ridge_model, bestlam_ridge)
+```
+
+The predictors that seem to have the greatest impact on the dependent variable in the Ridge model are:
+
+* Customer.TypeReturning (positive)
+
+* Customer.TypeFirst-time (negative)
+
+* Type.of.TravelPersonal (negative)
+
+* ClassEconomy (negative)
+
+* Check.in.Service (positive)
+
+* Online.Boarding (positive)
+
+* Seat.Comfort (positive)
+
+* Ease.of.online.Booking (negative)
+
+* Leg.Room.Service (positive)
+
+* In.flight.Wifi.Service (positive)
+
+* Cleanliness (positive)
+
+
+```{r}
+ridge_model_probs <- predict(ridge_model, s = bestlam_ridge, newdata=test, type="response")
+ridge_model_roc <- roc(test$Satisfaction ~ ridge_model_probs, plot=TRUE, print.auc=TRUE)
+```
+
+
+Roc function reports the following results with a threshold of 0.5:
+```{r}
+coords(ridge_model_roc, x=0.5, ret="all")
+```
+
+
+And the following considering the best threshold:
+```{r}
+coords(ridge_model_roc, x="best", ret="all")
+
 ```
 
 
 
 
+We can also try to fit a logistic regression model choosing the predictors suggested by Ridge
 
-# Ridge Model
+```{r}
+ridge_regression_model <- glm(Satisfaction ~ Customer.Type + Type.of.Travel + Class + Check.in.Service + Online.Boarding + Seat.Comfort+ Ease.of.Online.Booking + Leg.Room.Service + In.flight.Wifi.Service + Cleanliness , data = train, family = binomial)
+summary(ridge_regression_model)
+```
+
+
+From this model we can see that the best predictors belong to four specific classes: Customer and Travel Type, Comfort and Cleanliness, Airport Services and On-board services.
 
 
 
 
-# LDA - Linear discriminant analysis
+
+
+
+
+
+# Discriminant Analysis
+
+Finally, let us do a discriminant analysis using two techniques: 
+
+* Linear Discriminant Analysis (LDA) 
+
+* Quadratic Discriminant Analysis (QDA). 
+
+These are statistical techniques used for classification. 
+LDA assumes that the predictor variables (features) are normally distributed within each class and that all classes share the same covariance matrix. The objective of LDA is to find a linear combination of variables that maximises the separation between classes.
+
+QDA is similar to LDA, but relaxes the assumption of the common covariance matrix. In QDA, each class can have its own covariance matrix.
+This allows QDA to have a quadratic decision frontier, instead of a linear one.
+
+
+Let us apply the two techniques to the 'Best_Model' model implemented above.
+
+
+
+
+## LDA - Linear discriminant analysis
 
 ```{r}
 best_model <- Satisfaction ~ Customer.Type + Type.of.Travel + Class + Gate.Location + On.board.Service + Baggage.Handling + Check.in.Service + Online.Boarding + Food.and.Drink + In.flight.Service + In.flight.Wifi.Service + In.flight.Entertainment + Seat.Comfort +  Leg.Room.Service + Cleanliness
@@ -1891,6 +2072,9 @@ lda_pred_class <- lda_pred$class
 
 table(preds=lda_pred_class, true=testY1)
 ```
+
+
+
 
 
 ```{r}
@@ -1911,7 +2095,7 @@ coords(lda_roc, x="best", ret="all")
 
 
 
-# QDA - Quadratic discriminant analysis 
+## QDA - Quadratic discriminant analysis 
 
 ```{r}
 qda_step <- qda(best_model, data = train)
@@ -1943,10 +2127,26 @@ coords(qda_roc, x="best", ret="all")
 
 
 
+
+
+
+
+
+
+
+
+
+
 # Conclusions 
 
 
+spiegari di nuovo delle classi singole + quelle unite
 
+stepwise forse non serve
+
+ridge e lasso mostrare come sono simili ai modelli precedenti
+
+conclusione finale.
 
 
 
