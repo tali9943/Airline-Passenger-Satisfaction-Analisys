@@ -1,0 +1,67 @@
+```{r}
+testX[12,]
+
+```
+
+
+```{r, include = FALSE}
+testY1[12]
+
+```
+
+
+```{r}
+test12<-testX[12,]
+pred1.probs <- predict(MODELLO, test12, type = "response")
+pred1.probs
+
+```
+
+
+
+```{r}
+i1 <- predict(MODELLO, test12, type = "response", se.fit = TRUE)
+lo1 <- i1$fit - qnorm(0.975) * i1$se
+up1 <- i1$fit + qnorm(0.975) * i1$se
+c(lo1, up1)
+
+```
+
+
+
+```{r}
+
+test12$Pool<-"NO"
+pred2.probs <- predict(MODELLO, test12, type = "response")
+pred2.probs
+
+```
+
+
+
+```{r}
+
+i2 <- predict(MODELLO, test12, type = "response", se.fit = TRUE)
+lo2 <- i2$fit - qnorm(0.975) * i2$se
+up2 <- i2$fit + qnorm(0.975) * i2$se
+c(lo2, up2)
+
+```
+
+
+```{r}
+test12$Free.internet<-"NO"
+pred3.probs <- predict(MODELLO, test12, type = "response")
+pred3.probs
+
+```
+
+```{r}
+i3 <- predict(MODELLO, test12, type = "response", se.fit = TRUE)
+lo3 <- i3$fit - qnorm(0.975) * i3$se
+up3 <- i3$fit + qnorm(0.975) * i3$se
+c(lo3, up3)
+```
+
+
+

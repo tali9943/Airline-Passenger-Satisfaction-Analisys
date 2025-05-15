@@ -1,0 +1,53 @@
+Opzioni di Chunk in R Markdown
+echo:
+
+echo = TRUE (predefinito): Mostra il codice nel documento finale.
+echo = FALSE: Nasconde il codice e mostra solo l'output.
+echo = "n:m": Mostra solo le righe di codice da n a m.
+eval:
+
+eval = TRUE (predefinito): Esegue il codice.
+eval = FALSE: Non esegue il codice.
+include:
+
+include = TRUE (predefinito): Include sia il codice che l'output nel documento finale.
+include = FALSE: Non include né il codice né l'output nel documento finale. Utile per eseguire setup di codice invisibile.
+message:
+
+message = TRUE (predefinito): Mostra i messaggi generati dal codice.
+message = FALSE: Nasconde i messaggi generati dal codice.
+warning:
+
+warning = TRUE (predefinito): Mostra gli avvisi generati dal codice.
+warning = FALSE: Nasconde gli avvisi generati dal codice.
+results:
+
+results = "markup" (predefinito): Mostra l'output come normale markup.
+results = "asis": Mostra l'output "as-is", senza ulteriori modifiche.
+results = "hold": Accumula l'output e lo mostra alla fine del chunk.
+results = "hide": Nasconde l'output.
+fig.show:
+
+fig.show = "asis" (predefinito): Mostra le figure nel punto in cui vengono generate.
+fig.show = "hold": Mostra tutte le figure alla fine del chunk.
+fig.width e fig.height:
+
+fig.width e fig.height: Specificano la larghezza e l'altezza delle figure, in pollici.
+fig.align:
+
+fig.align = "default": Allinea la figura al testo.
+fig.align = "left": Allinea la figura a sinistra.
+fig.align = "right": Allinea la figura a destra.
+fig.align = "center": Centra la figura.
+cache:
+
+cache = TRUE: Cache il risultato del chunk per evitare la sua rielaborazione in successive knit.
+cache = FALSE (predefinito): Non cache il risultato.
+comment:
+
+comment = "#" (predefinito): Prefisso per i commenti dell'output.
+comment = NA: Nessun prefisso per i commenti.
+collapse:
+
+collapse = TRUE: Collassa i risultati e il codice in un unico blocco.
+collapse = FALSE (predefinito): Mantiene i risultati e il codice separati.
